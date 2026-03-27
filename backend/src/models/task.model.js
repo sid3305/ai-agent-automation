@@ -8,6 +8,10 @@ const StepResultSchema = new mongoose.Schema(
     stepId: { type: String },
     type: { type: String },
     tool: { type: String },
+    position: {
+      x: Number,
+      y: Number,
+    },
     input: { type: mongoose.Schema.Types.Mixed },
     output: { type: mongoose.Schema.Types.Mixed },
     success: { type: Boolean, default: true },
@@ -43,6 +47,11 @@ const TaskSchema = new mongoose.Schema(
     name: {
       type: String,
       default: "Default Task Name",
+    },
+
+    position: {
+      x: Number,
+      y: Number,
     },
 
     status: {

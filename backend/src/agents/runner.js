@@ -131,7 +131,14 @@ async function runWorkerLoop() {
             ? task.metadata.steps
             : [];
 
+      const edges =
+        task.metadata?.edges ||
+        workflow?.metadata?.edges ||
+        [];
       let success = true;
+
+      // console.log("🧩 STEPS:", steps);
+      // console.log("🔗 EDGES:", edges);
 
       if (steps.length > 0) {
         console.log(`⚙️ Executing ${steps.length} steps…`);
@@ -141,8 +148,38 @@ async function runWorkerLoop() {
           workflowId: task.workflowId,
         });
 
-        for (const step of steps) {
-          const result = await executeStep(step, context, agent);
+        function getStepId(step) {
+          return step.stepId || step.id || step.name;
+        }
+
+        const stepsMap = {};
+        steps.forEach((s) => {
+          stepsMap[getStepId(s)] = s;
+        });
+
+        // 🔥 find start node (no incoming edges)
+        const targetSet = new Set(edges.map((e) => e.target));
+        let currentStep = steps.find((s) => !targetSet.has(getStepId(s)));
+
+        let visited = new Set();
+
+        let stepCount = 0;
+        const MAX_STEPS = 50;
+
+        while (currentStep && stepCount < MAX_STEPS) {
+          stepCount++;
+          if (stepCount >= MAX_STEPS) {
+            console.warn("⚠️ Max steps reached, stopping execution");
+            success = false;
+          }
+
+          visited.add(getStepId(currentStep));
+
+          const result = await executeStep(currentStep, context, agent);
+
+          // 🔥 attach debug info directly to result
+          result.name = currentStep.name;
+          result.type = currentStep.type;
 
           await Task.findByIdAndUpdate(task._id, {
             $push: { stepResults: result },
@@ -151,18 +188,68 @@ async function runWorkerLoop() {
           context.results.push(result);
           context.last = {
             input: result.input,
-            output: result.output
+            output: result.output,
           };
 
           if (!result.success) {
             success = false;
-            writeLog(`Step failed: ${step.stepId}`, "error", {
-              workerId: WORKER_ID,
-              taskId: task._id,
-              workflowId: task.workflowId,
-            });
             break;
           }
+
+          // 🔥 FIND NEXT STEP USING EDGES
+          let nextEdge = null;
+
+          // ✅ CONDITION
+          if (currentStep.type === "condition") {
+            const branch = result.branch;
+
+            nextEdge = edges.find(
+              (e) =>
+                e.source === getStepId(currentStep) &&
+                e.condition === branch
+            );
+          }
+
+          // ✅ SWITCH
+          else if (currentStep.type === "switch") {
+            const normalize = (v) =>
+              String(v || "").toLowerCase().trim();
+
+            const value = normalize(result.caseValue);
+
+            nextEdge = edges.find((e) => {
+              if (e.source !== getStepId(currentStep)) return false;
+
+              const edgeValue = normalize(e.caseValue);
+
+              return value.includes(edgeValue); // 🔥 FIX
+            });
+
+            console.log("🔀 SWITCH DEBUG:", {
+              resultValue: value,
+              availableEdges: edges
+                .filter(e => e.source === getStepId(currentStep))
+                .map(e => e.caseValue)
+            });
+
+            // fallback (default edge)
+            if (!nextEdge) {
+              nextEdge = edges.find(
+                (e) =>
+                  e.source === getStepId(currentStep) &&
+                  !e.caseValue
+              );
+            }
+          }
+
+          // ✅ DEFAULT (linear fallback)
+          else {
+            nextEdge = edges.find((e) => e.source === getStepId(currentStep));
+          }
+
+          if (!nextEdge) break;
+
+          currentStep = stepsMap[nextEdge.target];
         }
       } else {
         const llmResult = await executeStep(
@@ -173,6 +260,7 @@ async function runWorkerLoop() {
           context,
           agent
         );
+        console.log("🧪 LLM RESULT:", llmResult);
 
         await Task.findByIdAndUpdate(task._id, {
           $push: { stepResults: llmResult },

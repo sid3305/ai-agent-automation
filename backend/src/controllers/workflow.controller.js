@@ -181,21 +181,56 @@ async function runWorkflowNow(req, res) {
  */
 async function updateWorkflowSteps(req, res) {
   try {
-    // console.log("🔥 HIT updateWorkflowSteps route");
-    // console.log("Received steps:", req.body.steps);
-
     const workflow = await Workflow.findById(req.params.workflowId);
-    if (!workflow) return res.status(404).json({ ok: false, error: "not_found" });
-    if (workflow.userId.toString() !== req.user._id.toString())
-      return res.status(403).json({ ok: false, error: "forbidden" });
 
-    const { steps } = req.body;
-    if (!Array.isArray(steps)) return res.status(400).json({ ok: false, error: "invalid_steps" });
+    if (!workflow) {
+      return res.status(404).json({ ok: false, error: "not_found" });
+    }
+
+    if (workflow.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+
+    let { steps, edges } = req.body;
+
+    if (!Array.isArray(steps)) {
+      return res.status(400).json({ error: "Invalid steps" });
+    }
+
+    // 🔥 CLEAN STEPS (REMOVE LEGACY FIELDS)
+    steps = steps.map((s) => {
+      const clean = { ...s };
+
+      delete clean.cases;
+      delete clean.defaultTarget;
+      delete clean.trueTarget;
+      delete clean.falseTarget;
+
+      return clean;
+    });
+
+    // 🔥 VALIDATE EDGES
+    edges = Array.isArray(edges)
+      ? edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+
+        // 🔥 keep everything important
+        label: e.label || "",
+        condition: e.condition || null,
+        caseValue: e.caseValue || null,
+
+        // optional but good
+        animated: e.animated ?? true,
+        style: e.style || { strokeWidth: 2 },
+      }))
+      : [];
 
     workflow.metadata = workflow.metadata || {};
     workflow.metadata.steps = steps;
+    workflow.metadata.edges = edges;
 
-    // 🚀 The missing fix
     workflow.markModified("metadata");
 
     await workflow.save();

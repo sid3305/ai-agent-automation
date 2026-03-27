@@ -1,0 +1,107 @@
+{
+  "id": "condition-logic",
+  "name": "Condition Logic",
+  "description": "Basic template to check the condition logic",
+  "category": "Custom",
+  "icon": "⚙️",
+  "tags": [
+    "workflow"
+  ],
+  "steps": [
+    {
+      "name": "First",
+      "position": {
+        "x": -80,
+        "y": -560
+      },
+      "type": "llm",
+      "prompt": "earth is not flat",
+      "useMemory": false,
+      "memoryTopK": 5
+    },
+    {
+      "name": "Condition",
+      "position": {
+        "x": -80,
+        "y": -360
+      },
+      "type": "condition",
+      "conditionType": "boolean",
+      "operator": "isTrue",
+      "value": ""
+    },
+    {
+      "name": "Negative",
+      "position": {
+        "x": -240,
+        "y": -120
+      },
+      "type": "file",
+      "action": "write",
+      "path": "runtime/negative.txt",
+      "content": "False bro"
+    },
+    {
+      "name": "Positive",
+      "position": {
+        "x": 80,
+        "y": -120
+      },
+      "type": "file",
+      "action": "write",
+      "path": "runtime/positive.txt",
+      "content": "True bro"
+    },
+    {
+      "name": "New Step",
+      "position": {
+        "x": -240,
+        "y": 40
+      },
+      "type": "delay",
+      "seconds": 10
+    },
+    {
+      "name": "New Step",
+      "position": {
+        "x": -240,
+        "y": 200
+      },
+      "type": "llm",
+      "prompt": "so earth is really not flat?",
+      "useMemory": false,
+      "memoryTopK": 5
+    },
+    {
+      "name": "New Step",
+      "position": {
+        "x": 80,
+        "y": 40
+      },
+      "type": "delay",
+      "seconds": 5
+    },
+    {
+      "name": "Result",
+      "position": {
+        "x": -80,
+        "y": 440
+      },
+      "type": "file",
+      "action": "write",
+      "path": "runtime/finalresult.txt",
+      "content": "{{last.output}}"
+    },
+    {
+      "name": "New Step",
+      "position": {
+        "x": 80,
+        "y": 200
+      },
+      "type": "llm",
+      "prompt": "so earth is really flat?",
+      "useMemory": false,
+      "memoryTopK": 5
+    }
+  ]
+}

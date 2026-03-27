@@ -5,11 +5,7 @@ const axios = require("axios");
 const { runLLM } = require("./llmAdapter");
 require("dotenv").config();
 
-/**
- * executeStep - central step executor
- * step: { type: "llm"|"http"|"email"|"file"|"browser"| ... }
- * context: object with runtime values (task input, workflow metadata, last output etc)
- */
+
 async function executeStep(step, context = {}, agent = null) {
   const start = Date.now();
 
@@ -427,6 +423,128 @@ ${query}
       };
     }
 
+    // ----- CONDITION -----
+    if (step.type === "condition") {
+      const normalize = (val) => {
+        if (!val) return "";
+        return String(val)
+          .toLowerCase()
+          .trim()
+          .replace(/[\n\r]+/g, " ")
+          .replace(/[^\w\s]/g, "")
+          .replace(/\s+/g, " ");
+      };
+
+      const rawOutput = context.last?.output || "";
+      const text = normalize(rawOutput);
+
+      let evaluation = false;
+
+      const positiveWords = ["yes", "true", "correct", "right", "positive"];
+      const negativeWords = ["no", "false", "incorrect", "wrong", "negative"];
+
+      try {
+        // ---------- BOOLEAN ----------
+        if (step.conditionType === "boolean") {
+          const userQuery = context.results[0]?.input || "";
+          const modelAnswer = context.last?.output || "";
+
+          const prompt = `
+You are a strict boolean evaluator.
+
+Question:
+${userQuery}
+
+Answer:
+${modelAnswer}
+
+Does the answer mean TRUE or FALSE?
+
+Respond ONLY with:
+true
+or
+false
+`;
+
+          const aiResult = await runLLM(prompt, {
+            provider: agent?.config?.provider,
+            model: agent?.config?.model,
+            temperature: 0,
+          });
+
+          const cleaned = aiResult.text.toLowerCase().trim();
+
+          evaluation = cleaned.includes("true");
+        }
+
+        // ---------- SENTIMENT ----------
+        if (step.conditionType === "sentiment") {
+          let result = null;
+
+          if (text.includes("positive")) result = true;
+          else if (text.includes("negative")) result = false;
+
+          // 🔥 AI fallback
+          if (result === null) {
+            const classification = await runLLM(
+              `
+Reply ONLY "positive" or "negative".
+
+Text:
+${rawOutput}
+`,
+              {
+                provider: agent?.config?.provider,
+                model: agent?.config?.model,
+                temperature: 0,
+              }
+            );
+
+            const res = normalize(classification.text);
+
+            result = res.includes("positive");
+          }
+
+          evaluation =
+            step.operator === "isPositive"
+              ? result === true
+              : result === false;
+        }
+      } catch (err) {
+        console.log("❌ Condition error:", err);
+        evaluation = false;
+      }
+
+      return {
+        stepId: step.stepId,
+        type: "condition",
+        output: evaluation,
+        branch: evaluation ? "true" : "false",
+        success: true,
+        timestamp: new Date(),
+      };
+    }
+
+    // ----- SWITCH -----
+    if (step.type === "switch") {
+      const output = String(context.last?.output || "")
+        .toLowerCase()
+        .trim();
+
+      console.log("🔀 SWITCH INPUT:", output);
+
+      return {
+        stepId: step.stepId,
+        type: "switch",
+        tool: "switch",
+        input: output,
+        output: output,
+        caseValue: output, // 🔥 KEY FIX
+        success: true,
+        timestamp: new Date(),
+      };
+    }
+
     // unknown step type
     return {
       stepId: step.stepId || null,
@@ -477,6 +595,44 @@ function interpolate(template = "", context = {}) {
 
     return String(val);
   });
+}
+
+function evaluateExpression(expression, context) {
+  try {
+    const normalize = (val) => {
+      if (typeof val !== "string") return val;
+
+      return val
+        .toLowerCase()
+        .trim()
+        .replace(/[\n\r]+/g, "")
+        .replace(/[^\w]/g, "");
+    };
+
+    const replaced = expression.replace(/\{\{(.*?)\}\}/g, (_, key) => {
+      const path = key.trim().split(".");
+      let val = context;
+
+      for (const p of path) {
+        val = val?.[p];
+      }
+
+      val = normalize(val);
+
+      if (typeof val === "string") return `"${val}"`;
+      return val;
+    });
+
+    // ALSO normalize literals inside expression
+    const cleanedExpression = replaced.replace(/'([^']+)'/g, (_, val) => {
+      return `"${normalize(val)}"`;
+    });
+
+    return Function(`return (${cleanedExpression})`)();
+  } catch (err) {
+    console.error("Condition evaluation failed:", err.message);
+    return false;
+  }
 }
 
 module.exports = { executeStep };

@@ -1,0 +1,76 @@
+{
+  "id": "switch-test",
+  "name": "Switch Test",
+  "description": "Tests switch-case.",
+  "category": "Custom",
+  "icon": "⚙️",
+  "tags": [
+    "workflow"
+  ],
+  "steps": [
+    {
+      "name": "Generate Type",
+      "position": {
+        "x": 340,
+        "y": -380
+      },
+      "type": "llm",
+      "prompt": "choose any random word and Respond with one word: email, file, browser or fallback",
+      "useMemory": false,
+      "memoryTopK": 5
+    },
+    {
+      "name": "Route",
+      "position": {
+        "x": 340,
+        "y": -200
+      },
+      "type": "switch"
+    },
+    {
+      "name": "Email Step",
+      "position": {
+        "x": 60,
+        "y": 60
+      },
+      "type": "email",
+      "to": "thisismail@test.com",
+      "subject": "Switch Case",
+      "text": "Working fine",
+      "html": ""
+    },
+    {
+      "name": "File Step",
+      "position": {
+        "x": 220,
+        "y": 220
+      },
+      "type": "file",
+      "action": "write",
+      "path": "runtime/working.txt",
+      "content": "Switch Case working"
+    },
+    {
+      "name": "Browser",
+      "position": {
+        "x": 640,
+        "y": 60
+      },
+      "type": "browser",
+      "action": "screenshot",
+      "url": "https://google.com",
+      "code": ""
+    },
+    {
+      "name": "Fallback",
+      "position": {
+        "x": 480,
+        "y": 220
+      },
+      "type": "file",
+      "action": "write",
+      "path": "runtime/fallback.txt",
+      "content": "This is fallback"
+    }
+  ]
+}

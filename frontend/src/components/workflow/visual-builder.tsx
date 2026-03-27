@@ -10,22 +10,37 @@ import ReactFlow, {
   Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { apiUrl } from "@/lib/api";
 import { v4 as uuidv4 } from "uuid";
+import { Edge, applyNodeChanges, applyEdgeChanges } from "reactflow";
 import { X } from "lucide-react";
 
-type StepType = "LLM" | "HTTP" | "Delay" | "Tool" | "Document";
+type StepType =
+  | "LLM"
+  | "HTTP"
+  | "Delay"
+  | "Tool"
+  | "Document"
+  | "Condition"
+  | "Switch";
 
 type StepNode = {
   id: string;
   type: string;
   position: { x: number; y: number };
   data: {
-    label: React.ReactNode;
+    label: React.ReactElement;
   };
   style?: React.CSSProperties;
 };
+
+type CustomEdge = Edge & {
+  condition?: "true" | "false";
+  caseValue?: string;
+};
+
+const EDGE_STYLE = { strokeWidth: 2 };
 
 /* ---------- NODE COLORS ---------- */
 
@@ -49,65 +64,102 @@ function getNodeColor(type: string) {
 export default function VisualBuilder({
   steps,
   setSteps,
+  edges,
+  onEdgesChange,
 }: {
   steps: any[];
   setSteps: React.Dispatch<React.SetStateAction<any[]>>;
+  edges: any[];
+  onEdgesChange: (edges: any[]) => void;
 }) {
-  /* ---------- INITIAL NODES ---------- */
-
-  const initialNodes: StepNode[] = steps.map((s, i) => ({
-    id: s.id,
-    type: "default",
-    position: { x: i * 320, y: 120 },
-    data: {
-      label: (
-        <div className="flex items-center justify-between gap-2">
-          <span>
-            {s.name} ({s.type})
-          </span>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteNode(s.id);
-            }}
-            className="text-red-500 hover:text-red-600 text-xs"
-          >
-            ✕
-          </button>
-        </div>
-      ),
-    },
-    style: {
-      padding: "12px 16px",
-      borderRadius: "12px",
-      border: `1px solid ${getNodeColor(s.type)}`,
-      background: "var(--card)",
-      color: "var(--foreground)",
-      fontSize: "14px",
-      cursor: "pointer",
-      fontWeight: 500,
-      minWidth: 240,
-      maxWidth: 240,
-      textAlign: "center",
-      boxShadow: `0 0 0 1px ${getNodeColor(s.type)}20, 0 2px 6px rgba(0,0,0,0.05)`,
-    },
-  }));
-
-  const initialEdges = steps.slice(1).map((step, index) => ({
-    id: `e-${steps[index].id}-${step.id}`,
-    source: steps[index].id,
-    target: step.id,
-    animated: true,
-    style: { strokeWidth: 2 },
-    label: "",
-  }));
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [flowEdges, setFlowEdges] = useState<CustomEdge[]>(() => edges || []);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
+
+  useEffect(() => {
+    onEdgesChange(flowEdges);
+  }, [flowEdges]);
+
+  const computedNodes = useMemo(() => {
+    if (!steps || steps.length === 0) return [];
+
+    return steps.map((s, i) => {
+      const schema = buildNodePreview(s, flowEdges);
+
+      return {
+        id: s.id,
+        type: "default",
+        position: s.position || { x: i * 320, y: 120 },
+
+        data: {
+          label: (
+            <div className="w-full text-sm">
+              <div className="flex items-center justify-between border-b pb-1 mb-2 group">
+                <span className="font-semibold truncate flex items-center gap-2">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: getNodeColor(s.type) }}
+                  />
+                  {s.name}
+                </span>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteNode(s.id);
+                  }}
+                  className="text-red-500 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-xs text-muted-foreground mb-2">{s.type}</div>
+
+              <div className="space-y-1">
+                {schema.map((row) => (
+                  <div
+                    key={row.name}
+                    className="flex justify-between text-xs py-1 border-b border-muted/50 last:border-0"
+                  >
+                    <span>{row.name}</span>
+                    <span className="text-muted-foreground">{row.type}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ),
+        },
+
+        style: {
+          padding: "12px 16px",
+          borderRadius: "12px",
+          border: `1px solid ${getNodeColor(s.type)}`,
+          background: "var(--card)",
+          color: "var(--foreground)",
+          fontSize: "14px",
+          cursor: "pointer",
+          fontWeight: 500,
+          minWidth: 240,
+          maxWidth: 240,
+          textAlign: "center" as const,
+          boxShadow: `0 0 0 1px ${getNodeColor(s.type)}20, 0 2px 6px rgba(0,0,0,0.05)`,
+        },
+      };
+    });
+  }, [steps, flowEdges]); // ✅ NOT flowEdges
+
+  const [nodes, setNodes, _onNodesChange] = useNodesState(computedNodes);
+
+  useEffect(() => {
+    setNodes((nds) =>
+      computedNodes.map((newNode) => {
+        const old = nds.find((n) => n.id === newNode.id);
+        return old ? { ...old, ...newNode } : newNode;
+      }),
+    );
+  }, [computedNodes]);
 
   /* ---------- EVENTS ---------- */
 
@@ -116,10 +168,45 @@ export default function VisualBuilder({
   }
 
   function handleEdgesDelete(deletedEdges: any[]) {
-    setEdges((eds) =>
-      eds.filter((edge) => !deletedEdges.find((d) => d.id === edge.id)),
+    setFlowEdges((eds) =>
+      eds.filter((edge) => !deletedEdges.some((d) => d.id === edge.id)),
     );
   }
+
+  const onNodesChange = (changes: any) => {
+    setNodes((nds) => {
+      const updated = applyNodeChanges(changes, nds);
+
+      // 🔥 AFTER nodes update, sync steps OUTSIDE render
+      setTimeout(() => {
+        setSteps((prev) =>
+          prev.map((step) => {
+            const node = updated.find((n) => n.id === step.id);
+            if (!node) return step;
+
+            return {
+              ...step,
+              position: node.position,
+            };
+          }),
+        );
+      }, 0);
+
+      return updated;
+    });
+  };
+
+  const handleEdgesChange = (changes: any) => {
+    const hasStructuralChange = changes.some(
+      (c: any) => c.type !== "select" && c.type !== "reset",
+    );
+
+    if (!hasStructuralChange) return;
+
+    setFlowEdges((eds) => {
+      return applyEdgeChanges(changes, eds);
+    });
+  };
 
   function rebuildStepOrder(newEdges: any[]) {
     if (!newEdges.length) return;
@@ -149,20 +236,69 @@ export default function VisualBuilder({
   }
 
   const onConnect = (params: Connection) => {
-    setEdges((eds) => {
-      const filtered = eds.filter((e) => e.target !== params.target);
+    const sourceStep = steps.find((s) => s.id === params.source);
 
-      const newEdges = addEdge(
-        {
-          ...params,
-          animated: true,
-          style: { strokeWidth: 2 },
-          label: "",
-        },
-        filtered,
+    const isCondition = sourceStep?.type === "Condition";
+    const isSwitch = sourceStep?.type === "Switch";
+
+    let condition: "true" | "false" | null = null;
+    let caseValue: string | null = null;
+
+    if (isCondition) {
+      const userChoice = prompt("Enter edge type: true / false");
+
+      if (userChoice !== "true" && userChoice !== "false") {
+        alert("Invalid input");
+        return;
+      }
+
+      condition = userChoice;
+    }
+
+    if (isSwitch) {
+      const userInput = prompt("Enter case value");
+
+      if (!userInput?.trim()) {
+        alert("Case value required");
+        return;
+      }
+
+      const value = userInput.trim();
+
+      const alreadyExists = flowEdges.some(
+        (e) => e.source === params.source && e.caseValue === value,
       );
 
-      return newEdges;
+      if (alreadyExists) {
+        alert("Case already exists");
+        return;
+      }
+
+      caseValue = value;
+    }
+
+    setFlowEdges((eds) => {
+      let filtered = eds;
+
+      if (isCondition && condition) {
+        filtered = (eds as CustomEdge[]).filter(
+          (e) => !(e.source === params.source && e.condition === condition),
+        );
+      }
+
+      const newEdge = {
+        id: uuidv4(),
+        ...params,
+        animated: true,
+        style: EDGE_STYLE,
+        label: caseValue || condition?.toUpperCase() || "",
+        condition,
+        caseValue,
+      };
+
+      const updated = addEdge(newEdge, filtered);
+
+      return updated;
     });
   };
 
@@ -172,7 +308,7 @@ export default function VisualBuilder({
     );
   }
 
-  function buildNodePreview(step: any) {
+  function buildNodePreview(step: any, edges: CustomEdge[]) {
     const rows: { name: string; type: string }[] = [];
 
     if (step.type === "LLM") {
@@ -205,6 +341,39 @@ export default function VisualBuilder({
       rows.push({ name: "topK", type: "number" });
     }
 
+    if (step.type === "Condition") {
+      const trueEdge = (edges as CustomEdge[]).find(
+        (e) => e.source === step.id && e.condition === "true",
+      );
+
+      const falseEdge = (edges as CustomEdge[]).find(
+        (e) => e.source === step.id && e.condition === "false",
+      );
+
+      const trueStep = steps.find((s) => s.id === trueEdge?.target);
+      const falseStep = steps.find((s) => s.id === falseEdge?.target);
+
+      rows.push({ name: "true →", type: trueStep?.name || "?" });
+      rows.push({ name: "false →", type: falseStep?.name || "?" });
+    }
+
+    if (step.type === "Switch") {
+      const outgoing = (edges as CustomEdge[]).filter(
+        (e) => e.source === step.id,
+      );
+
+      outgoing.forEach((edge) => {
+        const e = edge as CustomEdge;
+
+        const targetStep = steps.find((s) => s.id === e.target);
+
+        rows.push({
+          name: e.caseValue || "case",
+          type: targetStep?.name || "?",
+        });
+      });
+    }
+
     return rows;
   }
 
@@ -212,7 +381,7 @@ export default function VisualBuilder({
     const step = steps.find((s) => s.id === stepId);
     if (!step) return;
 
-    const schema = buildNodePreview({ ...step, name, type });
+    const schema = buildNodePreview({ ...step, name, type }, flowEdges);
 
     setNodes((nds) =>
       nds.map((n) =>
@@ -289,122 +458,41 @@ export default function VisualBuilder({
   }, []);
 
   useEffect(() => {
-    const newEdges = steps.slice(1).map((step, index) => ({
-      id: `e-${steps[index].id}-${step.id}`,
-      source: steps[index].id,
-      target: step.id,
-      animated: true,
-      style: { strokeWidth: 2 },
-      label: "",
-    }));
-
-    setEdges(newEdges);
-  }, [steps]);
-
-  useEffect(() => {
-    if (!edges.length) return;
-
-    const map: Record<string, string> = {};
-
-    edges.forEach((edge) => {
-      map[edge.source] = edge.target;
-    });
-
-    const start = steps.find((s) => !edges.find((e) => e.target === s.id));
-    if (!start) return;
-
-    const ordered: any[] = [];
-    const visited = new Set<string>();
-
-    let current = start;
-
-    while (current && !visited.has(current.id)) {
-      ordered.push(current);
-      visited.add(current.id);
-
-      const nextId = map[current.id];
-      current = steps.find((s) => s.id === nextId);
-    }
-
-    // 🔹 add remaining steps that are disconnected
-    const remaining = steps.filter((s) => !visited.has(s.id));
-
-    const newOrder = [...ordered, ...remaining];
-
-    const currentOrder = steps.map((s) => s.id).join(",");
-    const nextOrder = newOrder.map((s) => s.id).join(",");
-
-    if (currentOrder !== nextOrder) {
-      setSteps(newOrder);
-    }
-  }, [edges]);
-
-  useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
         const step = steps.find((s) => s.id === node.id);
         if (!step) return node;
+
         const isSelected = selectedNode?.id === node.id;
 
-        const schema = buildNodePreview(step);
+        const border = isSelected
+          ? "2px solid #3b82f6"
+          : `1px solid ${getNodeColor(step.type)}`;
+
+        const boxShadow = isSelected
+          ? "0 0 0 2px rgba(59,130,246,.35), 0 4px 12px rgba(0,0,0,.25)"
+          : `0 0 0 1px ${getNodeColor(step.type)}20, 0 2px 6px rgba(0,0,0,0.05)`;
+
+        // ✅ prevent unnecessary re-renders
+        if (
+          node.style?.border === border &&
+          node.style?.boxShadow === boxShadow
+        ) {
+          return node;
+        }
 
         return {
           ...node,
           style: {
             ...node.style,
-            border: isSelected
-              ? "2px solid #3b82f6"
-              : `1px solid ${getNodeColor(step.type)}`,
-            boxShadow: isSelected
-              ? "0 0 0 2px rgba(59,130,246,.35), 0 4px 12px rgba(0,0,0,.25)"
-              : `0 0 0 1px ${getNodeColor(step.type)}20, 0 2px 6px rgba(0,0,0,0.05)`,
+            border,
+            boxShadow,
           },
-          data: {
-            ...node.data,
-            label: (
-              <div className="w-full text-sm">
-                <div className="flex items-center justify-between border-b pb-1 mb-2 group">
-                  <span className="font-semibold truncate flex items-center gap-2">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: getNodeColor(step.type) }}
-                    />
-                    {step.name}
-                  </span>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteNode(step.id);
-                    }}
-                    className="text-red-500 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="text-xs text-muted-foreground mb-2">
-                  {step.type}
-                </div>
-
-                <div className="space-y-1">
-                  {schema.map((row) => (
-                    <div
-                      key={row.name}
-                      className="flex justify-between text-xs py-1 border-b border-muted/50 last:border-0"
-                    >
-                      <span>{row.name}</span>
-                      <span className="text-muted-foreground">{row.type}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ),
-          },
+          // ❌ DO NOT rebuild label here
         };
       }),
     );
-  }, [steps, selectedNode]);
+  }, [selectedNode]);
 
   /* ---------- ADD NODE ---------- */
 
@@ -446,7 +534,7 @@ export default function VisualBuilder({
         minWidth: 240,
         cursor: "pointer",
         maxWidth: 240,
-        textAlign: "center",
+        textAlign: "center" as const,
         boxShadow: `0 0 0 1px ${getNodeColor("LLM")}20, 0 2px 6px rgba(0,0,0,0.05)`,
       },
     };
@@ -468,8 +556,10 @@ export default function VisualBuilder({
 
   function deleteNode(nodeId: string) {
     setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-    setEdges((eds) =>
-      eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
+
+    // 🔥 remove all edges connected to this node
+    setFlowEdges((eds) =>
+      eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
     );
 
     setSteps((prev) => prev.filter((s) => s.id !== nodeId));
@@ -496,20 +586,33 @@ export default function VisualBuilder({
 
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={flowEdges}
         onConnect={onConnect}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChange}
         onEdgesDelete={handleEdgesDelete}
         onNodeClick={onNodeClick}
         proOptions={{ hideAttribution: true }}
         connectionLineStyle={{ strokeWidth: 2 }}
         defaultEdgeOptions={{
-          type: "smoothstep",
+          type: "default",
           animated: true,
+          labelStyle: {
+            fill: "var(--foreground)",
+            fontSize: 12,
+            fontWeight: 500,
+          },
+          labelBgStyle: {
+            fill: "var(--card)",
+            fillOpacity: 0.9,
+          },
+          labelBgPadding: [4, 2],
+          labelBgBorderRadius: 4,
           style: { strokeWidth: 2 },
         }}
         fitView
+        snapToGrid
+        snapGrid={[20, 20]}
       >
         <Controls className="bg-card border rounded-md shadow" />
 
@@ -585,6 +688,8 @@ export default function VisualBuilder({
                 <option value="Delay">Delay</option>
                 <option value="Tool">Tool</option>
                 <option value="Document">Document</option>
+                <option value="Condition">Condition</option>
+                <option value="Switch">Switch</option>
               </select>
             </div>
 
@@ -947,6 +1052,105 @@ export default function VisualBuilder({
                       })
                     }
                   />
+                </div>
+              </>
+            )}
+
+            {/* CONDITION */}
+            {selectedStep.type === "Condition" && (
+              <>
+                {/* CONDITION TYPE */}
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Condition Type
+                  </label>
+
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 mt-1 bg-background"
+                    value={selectedStep.conditionType || ""}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        conditionType: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Select operator</option>
+                    <option value="boolean">Boolean (Yes/No)</option>
+                    <option value="sentiment">Sentiment</option>
+                    <option value="contains">Contains Text</option>
+                  </select>
+                </div>
+
+                {/* OPERATOR */}
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Operator
+                  </label>
+
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 mt-1 bg-background"
+                    value={selectedStep.operator || ""}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        operator: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Select operator</option>
+
+                    {selectedStep.conditionType === "boolean" && (
+                      <>
+                        <option value="isTrue">Is True</option>
+                        <option value="isFalse">Is False</option>
+                      </>
+                    )}
+
+                    {selectedStep.conditionType === "sentiment" && (
+                      <>
+                        <option value="isPositive">Positive</option>
+                        <option value="isNegative">Negative</option>
+                      </>
+                    )}
+
+                    {selectedStep.conditionType === "contains" && (
+                      <>
+                        <option value="includes">Includes</option>
+                        <option value="notIncludes">Does Not Include</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* VALUE (ONLY FOR CONTAINS) */}
+                {selectedStep.conditionType === "contains" && (
+                  <div>
+                    <label className="text-xs text-muted-foreground">
+                      Value
+                    </label>
+
+                    <input
+                      className="w-full border rounded-lg px-3 py-2 mt-1 bg-background"
+                      value={selectedStep.value || ""}
+                      onChange={(e) =>
+                        updateStep(selectedStep.id, {
+                          value: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* SWITCH */}
+            {selectedStep.type === "Switch" && (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  Connect edges to define cases.
+                </div>
+
+                <div className="text-xs opacity-70">
+                  Each connection = one case value
                 </div>
               </>
             )}

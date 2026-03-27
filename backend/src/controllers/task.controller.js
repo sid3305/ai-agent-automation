@@ -37,6 +37,10 @@ async function createTask(req, res) {
         ? workflow.metadata.steps
         : [];
 
+      const edges = Array.isArray(workflow.metadata?.edges)
+        ? workflow.metadata.edges
+        : [];
+
       if (steps.length === 0) {
         return sendError(res, 400, "workflow_has_no_steps");
       }
@@ -55,6 +59,7 @@ async function createTask(req, res) {
 
       metadata: {
         ...(metadata || {}),
+        edges,
         runningBy: "manual_run",
       },
     });

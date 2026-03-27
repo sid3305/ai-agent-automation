@@ -11,7 +11,10 @@ const WorkflowSchema = new mongoose.Schema({
     message: String,
     timestamp: { type: Date, default: Date.now }
   }],
-  metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+  metadata: {
+    steps: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    edges: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  }
 }, { timestamps: true, minimize: false });
 
 module.exports = mongoose.models.Workflow || mongoose.model("Workflow", WorkflowSchema);

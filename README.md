@@ -30,6 +30,12 @@
 
 ---
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/image?repos=vmdeshpande/ai-agent-automation&type=date&legend=top-left)](https://www.star-history.com/?repos=vmdeshpande%2Fai-agent-automation&type=date&legend=top-left)
+
+---
+
 ## ⚙️ How It Works
 
 1. You create a **Workflow** made of ordered steps (**LLM**, **HTTP**, **Tool**, **Delay**)

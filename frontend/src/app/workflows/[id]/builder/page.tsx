@@ -28,13 +28,25 @@ import { apiUrl } from "@/lib/api";
 
 /* ---------------- TYPES ---------------- */
 
-type StepType = "LLM" | "HTTP" | "Delay" | "Tool" | "Document";
+type StepType =
+  | "LLM"
+  | "HTTP"
+  | "Delay"
+  | "Tool"
+  | "Document"
+  | "Condition"
+  | "Switch";
 type ToolType = "email" | "file" | "browser";
 
 type WorkflowStep = {
   id: string;
   type: StepType;
   name: string;
+
+  position?: {
+    x: number;
+    y: number;
+  };
 
   // LLM
   useMemory?: boolean;
@@ -70,6 +82,22 @@ type WorkflowStep = {
   documentId?: string;
   query?: string;
   topK?: number;
+
+  // CONDITION (NEW SYSTEM)
+  conditionType?: "boolean" | "sentiment" | "contains";
+  operator?: string;
+  value?: string;
+
+  trueTarget?: string;
+  falseTarget?: string;
+
+  // SWITCH
+  cases?: {
+    value: string; // what to match
+    target: string; // stepId
+  }[];
+
+  defaultTarget?: string;
 };
 
 type BackendStep = {
@@ -91,6 +119,7 @@ type WorkflowResponse = {
   name: string;
   metadata?: {
     steps?: BackendStep[];
+    edges?: any[];
   };
 };
 
@@ -219,6 +248,7 @@ export default function WorkflowBuilderPage() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [builderMode, setBuilderMode] = useState<"list" | "visual">("list");
   const { addToast } = useToast();
+  const [edges, setEdges] = useState<any[]>([]);
   const { setContext, clearContext } = useAssistantContext();
 
   async function fetchWorkflow() {
@@ -236,6 +266,12 @@ export default function WorkflowBuilderPage() {
       setWorkflowName(workflow.name);
 
       const backendSteps = workflow.metadata?.steps ?? [];
+      const backendEdges = (workflow.metadata?.edges ?? []).map((e: any) => ({
+        ...e,
+        id: e.id || crypto.randomUUID(),
+        label: e.label || e.caseValue || e.condition?.toUpperCase() || "",
+      }));
+      setEdges(backendEdges);
 
       // 🔄 normalize backend steps → builder steps
       const normalizedSteps: WorkflowStep[] = backendSteps.map((s) => ({
@@ -246,13 +282,19 @@ export default function WorkflowBuilderPage() {
             ? "Delay"
             : s.type === "http"
               ? "HTTP"
-              : s.type === "document_query"
-                ? "Document"
-                : s.type === "file" ||
-                    s.type === "email" ||
-                    s.type === "browser"
-                  ? "Tool"
-                  : "LLM",
+              : s.type === "condition"
+                ? "Condition"
+                : s.type === "switch"
+                  ? "Switch"
+                  : s.type === "document_query"
+                    ? "Document"
+                    : s.type === "file" ||
+                        s.type === "email" ||
+                        s.type === "browser"
+                      ? "Tool"
+                      : "LLM",
+
+        position: (s as any).position || { x: 0, y: 0 },
 
         // LLM
         useMemory: (s as any).useMemory ?? false,
@@ -285,6 +327,18 @@ export default function WorkflowBuilderPage() {
         documentId: (s as any).documentId ?? "",
         query: (s as any).query ?? "",
         topK: (s as any).topK ?? 4,
+
+        // CONDITION
+        conditionType: (s as any).conditionType ?? "",
+        operator: (s as any).operator ?? "",
+        value: (s as any).value ?? "",
+
+        trueTarget: (s as any).trueTarget ?? "",
+        falseTarget: (s as any).falseTarget ?? "",
+
+        // SWITCH
+        cases: (s as any).cases ?? [],
+        defaultTarget: (s as any).defaultTarget ?? "",
       }));
 
       setSteps(normalizedSteps);
@@ -307,12 +361,20 @@ export default function WorkflowBuilderPage() {
       workflowName: workflowName ?? undefined,
       status: "editing",
 
-      builderSteps: steps.map((s) => ({
-        id: s.id,
-        name: s.name,
-        type: s.type,
-        summary: summarizeStep(s),
-      })),
+      builderSteps: steps
+        .filter(
+          (s) =>
+            s.type === "LLM" ||
+            s.type === "HTTP" ||
+            s.type === "Tool" ||
+            s.type === "Delay",
+        )
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          type: s.type as "LLM" | "HTTP" | "Tool" | "Delay",
+          summary: summarizeStep(s),
+        })),
     });
 
     return () => {
@@ -354,14 +416,60 @@ export default function WorkflowBuilderPage() {
     ]);
   }
 
+  function enrichStepsWithEdges(steps: WorkflowStep[], edges: any[]) {
+    return steps.map((step) => {
+      // 🔀 SWITCH NODE
+      if (step.type === "Switch") {
+        const outgoing = edges.filter((e) => e.source === step.id);
+
+        const cases = outgoing
+          .filter((e) => e.caseValue)
+          .map((e) => ({
+            value: e.caseValue,
+            target: e.target,
+          }));
+
+        const fallback = outgoing.find((e) => !e.caseValue);
+
+        return {
+          ...step,
+          cases,
+          defaultTarget: fallback?.target,
+        };
+      }
+
+      // 🔁 CONDITION NODE
+      if (step.type === "Condition") {
+        const trueEdge = edges.find(
+          (e) => e.source === step.id && e.condition === "true",
+        );
+
+        const falseEdge = edges.find(
+          (e) => e.source === step.id && e.condition === "false",
+        );
+
+        return {
+          ...step,
+          trueTarget: trueEdge?.target,
+          falseTarget: falseEdge?.target,
+        };
+      }
+
+      return step;
+    });
+  }
+
   async function saveWorkflow() {
     try {
-      const backendSteps: BackendStepPayload[] = steps.map((s) => {
+      const enrichedSteps = enrichStepsWithEdges(steps, edges);
+
+      const backendSteps = enrichedSteps.map((s) => {
         // ----- LLM -----
         if (s.type === "LLM") {
           return {
             stepId: s.id,
             name: s.name,
+            position: s.position,
             type: "llm",
             prompt: s.prompt ?? "",
             useMemory: s.useMemory ?? false,
@@ -374,6 +482,7 @@ export default function WorkflowBuilderPage() {
           return {
             stepId: s.id,
             name: s.name,
+            position: s.position,
             type: "delay",
             seconds: s.delay ?? 0,
           };
@@ -384,6 +493,7 @@ export default function WorkflowBuilderPage() {
           return {
             stepId: s.id,
             name: s.name,
+            position: s.position,
             type: "http",
             method: s.method ?? "GET",
             url: s.url ?? "",
@@ -395,10 +505,35 @@ export default function WorkflowBuilderPage() {
           return {
             stepId: s.id,
             name: s.name,
+            position: s.position,
             type: "document_query",
             documentId: s.documentId,
             query: s.query,
             topK: s.topK ?? 4,
+          };
+        }
+
+        if (s.type === "Condition") {
+          return {
+            stepId: s.id,
+            name: s.name,
+            position: s.position,
+            type: "condition",
+            conditionType: s.conditionType,
+            operator: s.operator,
+            value: s.value,
+            trueTarget: s.trueTarget,
+            falseTarget: s.falseTarget,
+          };
+        }
+
+        // ----- SWITCH -----
+        if (s.type === "Switch") {
+          return {
+            stepId: s.id,
+            name: s.name,
+            position: s.position,
+            type: "switch",
           };
         }
 
@@ -411,6 +546,7 @@ export default function WorkflowBuilderPage() {
           const base: any = {
             stepId: s.id,
             name: s.name,
+            position: s.position,
             type: toolType,
           };
 
@@ -453,6 +589,7 @@ export default function WorkflowBuilderPage() {
         return {
           stepId: s.id,
           name: s.name,
+          position: s.position,
           type: "unknown" as any,
         };
       });
@@ -465,6 +602,7 @@ export default function WorkflowBuilderPage() {
         },
         body: JSON.stringify({
           steps: backendSteps,
+          edges: edges,
         }),
       });
 
@@ -566,7 +704,14 @@ export default function WorkflowBuilderPage() {
             {/* Steps */}
 
             {builderMode === "visual" && (
-              <VisualBuilder steps={steps} setSteps={setSteps} />
+              <VisualBuilder
+                steps={steps}
+                setSteps={setSteps}
+                edges={edges}
+                onEdgesChange={(updatedEdges) => {
+                  setEdges(updatedEdges);
+                }}
+              />
             )}
 
             {builderMode === "list" && (
@@ -584,25 +729,42 @@ export default function WorkflowBuilderPage() {
                       <Card
                         key={step.id}
                         className="p-6 transition-shadow hover:shadow-lg"
-                        onClick={() =>
+                        onClick={() => {
+                          const validStepType = (
+                            ["LLM", "HTTP", "Tool", "Delay"].includes(step.type)
+                              ? step.type
+                              : "LLM"
+                          ) as "LLM" | "HTTP" | "Tool" | "Delay";
                           setContext({
                             page: "workflow-builder",
                             workflowId: id,
                             workflowName: workflowName ?? undefined,
                             status: "editing",
 
-                            builderSteps: steps.map((s) => ({
-                              id: s.id,
-                              name: s.name,
-                              type: s.type,
-                              summary: summarizeStep(s),
-                            })),
+                            builderSteps: steps
+                              .filter(
+                                (s) =>
+                                  s.type === "LLM" ||
+                                  s.type === "HTTP" ||
+                                  s.type === "Tool" ||
+                                  s.type === "Delay",
+                              )
+                              .map((s) => ({
+                                id: s.id,
+                                name: s.name,
+                                type: s.type as
+                                  | "LLM"
+                                  | "HTTP"
+                                  | "Delay"
+                                  | "Tool",
+                                summary: summarizeStep(s),
+                              })),
                             stepId: step.id,
                             stepName: step.name,
-                            stepType: step.type,
+                            stepType: validStepType,
                             stepDescription: summarizeStep(step),
-                          })
-                        }
+                          });
+                        }}
                       >
                         <div className="mb-4 flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -655,6 +817,10 @@ export default function WorkflowBuilderPage() {
                                 <SelectItem value="Document">
                                   Document Query
                                 </SelectItem>
+                                <SelectItem value="Condition">
+                                  Condition
+                                </SelectItem>
+                                <SelectItem value="Switch">Switch</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1033,6 +1199,72 @@ export default function WorkflowBuilderPage() {
                                 }
                               />
                             </div>
+                          )}
+
+                          {/* CONDITION */}
+                          {step.type === "Condition" && (
+                            <>
+                              <div>
+                                <Label>Condition Type</Label>
+                                <Select
+                                  value={step.conditionType}
+                                  onValueChange={(v) =>
+                                    updateStep(step.id, {
+                                      conditionType: v as any,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="mt-1.5">
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="boolean">
+                                      Boolean
+                                    </SelectItem>
+                                    <SelectItem value="sentiment">
+                                      Sentiment
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label>Operator</Label>
+                                <Select
+                                  value={step.operator}
+                                  onValueChange={(v) =>
+                                    updateStep(step.id, { operator: v as any })
+                                  }
+                                >
+                                  <SelectTrigger className="mt-1.5">
+                                    <SelectValue placeholder="Select operator" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {step.conditionType === "boolean" && (
+                                      <>
+                                        <SelectItem value="isTrue">
+                                          is True
+                                        </SelectItem>
+                                        <SelectItem value="isFalse">
+                                          is False
+                                        </SelectItem>
+                                      </>
+                                    )}
+
+                                    {step.conditionType === "sentiment" && (
+                                      <>
+                                        <SelectItem value="isPositive">
+                                          is Positive
+                                        </SelectItem>
+                                        <SelectItem value="isNegative">
+                                          is Negative
+                                        </SelectItem>
+                                      </>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
                           )}
                         </div>
                       </Card>
