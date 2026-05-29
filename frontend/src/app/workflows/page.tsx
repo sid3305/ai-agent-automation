@@ -176,10 +176,18 @@ export default function WorkflowsPage() {
     };
   }, [loading, workflows]);
 
-  function copyId(id: string) {
-    navigator.clipboard.writeText(id);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+async function copyId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      addToast({
+        type: "error",
+        title: "Failed to copy",
+        description: "Could not copy workflow ID to clipboard.",
+      });
+    }
   }
 
   function getAgentName(agentId?: string | null) {
