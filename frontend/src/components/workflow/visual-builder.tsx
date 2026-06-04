@@ -229,8 +229,8 @@ export default function VisualBuilder({
 }) {
   usePerformanceMonitor("VisualBuilder");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const historyRef = useRef<any[][]>([]);
-  const futureRef = useRef<any[][]>([]);
+  const historyRef = useRef<{ steps: any[]; edges: CustomEdge[] }[]>([]);
+  const futureRef = useRef<{ steps: any[]; edges: CustomEdge[] }[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [flowEdges, setFlowEdges] = useState<CustomEdge[]>(() => edges || []);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
@@ -242,7 +242,7 @@ export default function VisualBuilder({
   const deleteNode = useCallback(
     (nodeId: string) => {
       setSteps((prev) => {
-        historyRef.current.push([...prev]);
+        historyRef.current.push({ steps: [...prev], edges: [...flowEdges] });
         futureRef.current = [];
         return prev.filter((s) => s.id !== nodeId);
       });
@@ -340,24 +340,26 @@ export default function VisualBuilder({
       if (isMod && !e.shiftKey && e.key === "z") {
         e.preventDefault();
         if (historyRef.current.length === 0) return;
-        const prev = historyRef.current.pop()!;
-        futureRef.current.push(steps);
-        setSteps(prev);
+        const snapshot = historyRef.current.pop()!;
+        futureRef.current.push({ steps, edges: flowEdges });
+        setSteps(snapshot.steps);
+        setFlowEdges(snapshot.edges);
         return;
       }
 
-      if (isMod && e.shiftKey && e.key === "z") {
+      if (isMod && e.shiftKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (futureRef.current.length === 0) return;
-        const next = futureRef.current.pop()!;
-        historyRef.current.push(steps);
-        setSteps(next);
+        const snapshot = futureRef.current.pop()!;
+        historyRef.current.push({ steps, edges: flowEdges });
+        setSteps(snapshot.steps);
+        setFlowEdges(snapshot.edges);
         return;
       }
 
       if (e.key === "Delete" && selectedNode) {
         e.preventDefault();
-        historyRef.current.push([...steps]);
+        historyRef.current.push({ steps: [...steps], edges: [...flowEdges] });
         futureRef.current = [];
         deleteNode(selectedNode.id);
         return;
