@@ -34,12 +34,15 @@ async function completeTask(taskId, { success = true, stepResult = null } = {}) 
   if (!success) {
     if ((task.attempts || 0) < maxAttempts) {
       update.$set.status = "retrying";
+      const archivedSteps = task.stepResults ? [...task.stepResults] : [];
+      if (stepResult) archivedSteps.push(stepResult);
+
       update.$push.retryHistory = {
         attempt: task.attempts,
         startedAt: task.startedAt,
         failedAt: new Date(),
         error: "Step execution failed or timed out",
-        stepResults: task.stepResults || []
+        stepResults: archivedSteps
       };
 
       update.$set.stepResults = [];
