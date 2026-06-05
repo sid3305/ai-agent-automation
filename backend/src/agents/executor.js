@@ -8,6 +8,38 @@ const { runSlack } = require("../integrations/slack");
 const { runDiscord } = require("../integrations/discord");
 require("dotenv").config();
 
+function resolveWorkflowFilePath(filePath) {
+  if (typeof filePath !== "string" || filePath.trim() === "") {
+    throw new Error("Invalid file path");
+  }
+
+  if (filePath.includes("\0")) {
+    throw new Error("Invalid file path");
+  }
+
+  if (path.isAbsolute(filePath) || path.win32.isAbsolute(filePath)) {
+    throw new Error("Invalid file path: absolute paths are not allowed");
+  }
+
+  const workflowBaseDir = path.resolve(
+    process.cwd(),
+    "runtime",
+    "workflow-files"
+  );
+
+  const resolvedPath = path.resolve(workflowBaseDir, filePath);
+  const relativePath = path.relative(workflowBaseDir, resolvedPath);
+
+  if (
+    relativePath === "" ||
+    relativePath.startsWith("..") ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error("Invalid file path: path escapes workflow directory");
+  }
+
+  return resolvedPath;
+}
 
 async function executeStep(step, context = {}, agent = null) {
   const start = Date.now();
@@ -66,6 +98,7 @@ Do not say you lack memory.`;
         temperature: agent?.config?.temperature,
         ...step.options
       });
+
       const result = {
         stepId: step.stepId || null,
         type: "llm",
@@ -103,7 +136,6 @@ Do not say you lack memory.`;
         step.seconds ?? step.delay ?? step.prompt ?? 0
       );
 
-
       console.log("⏳ Delay step → sleeping for", sec, "seconds");
 
       await new Promise(resolve => setTimeout(resolve, sec * 1000));
@@ -119,7 +151,6 @@ Do not say you lack memory.`;
       };
     }
 
-
     // ----- HTTP -----
     if (step.type === "http") {
       let parsedBody = null;
@@ -129,7 +160,6 @@ Do not say you lack memory.`;
         try {
           parsedBody = JSON.parse(interpolated);
         } catch (err) {
-          // fallback to raw string if JSON parse fails
           parsedBody = interpolated;
         }
       }
@@ -142,7 +172,6 @@ Do not say you lack memory.`;
         timeout: step.timeout || 30000,
         validateStatus: () => true,
       });
-
 
       return {
         stepId: step.stepId || null,
@@ -211,9 +240,25 @@ Do not say you lack memory.`;
     if (step.type === "file") {
       const action = (step.action || "read").toLowerCase();
 
-      const resolvedPath = step.path
+      const requestedPath = step.path
         ? interpolate(step.path, context)
-        : `runtime/stepName_${step.name}_TaskId_${context.taskId}.txt`;
+        : `stepName_${step.name}_TaskId_${context.taskId}.txt`;
+
+      let outPath;
+
+      try {
+        outPath = resolveWorkflowFilePath(requestedPath);
+      } catch (err) {
+        return {
+          stepId: step.stepId,
+          type: "file",
+          tool: "file",
+          input: { action, path: requestedPath },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
 
       const content = interpolate(step.content || "", context);
       const { runToolInSandbox } = require("../tools/registry");
@@ -347,7 +392,6 @@ Do not say you lack memory.`;
 
     // ----- DOCUMENT QUERY -----
     if (step.type === "document_query") {
-
       const { queryDocument } = require("../services/documentService");
 
       const documentId = step.documentId;
@@ -365,7 +409,6 @@ Do not say you lack memory.`;
         .map((c, i) => `Chunk ${i + 1}:\n${c.content}`)
         .join("\n\n");
 
-      // prevent very large prompts
       const MAX_CONTEXT = 3000;
       if (contextText.length > MAX_CONTEXT) {
         contextText = contextText.slice(0, MAX_CONTEXT);
@@ -465,7 +508,6 @@ false
           if (text.includes("positive")) result = true;
           else if (text.includes("negative")) result = false;
 
-          // 🔥 AI fallback
           if (result === null) {
             const classification = await runLLM(
               `
@@ -520,7 +562,7 @@ ${rawOutput}
         tool: "switch",
         input: output,
         output: output,
-        caseValue: output, // 🔥 KEY FIX
+        caseValue: output,
         success: true,
         timestamp: new Date(),
       };
@@ -577,6 +619,7 @@ ${rawOutput}
         };
       }
     }
+
     // ----- DISCORD -----
     if (step.type === "discord") {
       try {
@@ -614,7 +657,6 @@ ${rawOutput}
       timestamp: new Date()
     };
   } catch (err) {
-    // return error object (don't leak secrets)
     return {
       stepId: step.stepId || null,
       type: step.type || "unknown",
@@ -626,7 +668,6 @@ ${rawOutput}
       timestamp: new Date()
     };
   } finally {
-    // you can log step duration if needed
     // const duration = Date.now() - start;
   }
 }
@@ -638,13 +679,14 @@ function interpolate(template = "", context = {}) {
   if (typeof template !== "string") return template;
   return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
     const k = key.trim();
-    // support nested keys like input.text
     const parts = k.split(".");
     let val = context;
+
     for (const p of parts) {
       if (val === undefined || val === null) break;
       val = val[p];
     }
+
     if (val === undefined || val === null) return "";
 
     if (typeof val === "object") {
@@ -681,7 +723,6 @@ function evaluateExpression(expression, context) {
       return val;
     });
 
-    // ALSO normalize literals inside expression
     const cleanedExpression = replaced.replace(/'([^']+)'/g, (_, val) => {
       return `"${normalize(val)}"`;
     });
