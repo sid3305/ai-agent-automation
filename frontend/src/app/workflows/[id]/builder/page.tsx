@@ -248,6 +248,18 @@ export default function WorkflowBuilderPage() {
   const { addToast } = useToast();
   const [edges, setEdges] = useState<any[]>([]);
   const { setContext, clearContext } = useAssistantContext();
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   async function fetchWorkflow() {
     try {
@@ -433,6 +445,7 @@ export default function WorkflowBuilderPage() {
         prompt: "",
       },
     ]);
+    setHasUnsavedChanges(true);
   }
 
   function enrichStepsWithEdges(steps: WorkflowStep[], edges: any[]) {
@@ -669,6 +682,7 @@ export default function WorkflowBuilderPage() {
         title: "Workflow saved",
         description: "Your workflow steps were updated successfully",
       });
+      setHasUnsavedChanges(false);
     } catch (err) {
       console.error("Save workflow failed:", err);
       addToast({
@@ -681,12 +695,14 @@ export default function WorkflowBuilderPage() {
 
   function removeStep(stepId: string) {
     setSteps((prev) => prev.filter((s) => s.id !== stepId));
+    setHasUnsavedChanges(true);
   }
 
   function updateStep(stepId: string, patch: Partial<WorkflowStep>) {
     setSteps((prev) =>
       prev.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
     );
+    setHasUnsavedChanges(true);
   }
 
   if (loading) {
@@ -740,17 +756,36 @@ export default function WorkflowBuilderPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/*Visual Indicator */}
+                {hasUnsavedChanges && (
+                  <span className="text-sm font-medium text-amber-500 flex items-center gap-2 mr-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    Unsaved Changes
+                  </span>
+                )}
+
                 <Button
                   variant="outline"
-                  onClick={() => router.push(`/workflows/${id}`)}
+                  onClick={() => {
+                    if (hasUnsavedChanges) {
+                      if (window.confirm("You have unsaved changes. Are you sure you want to leave without saving?")) {
+                        router.push(`/workflows/${id}`);
+                      }
+                    } else {
+                      router.push(`/workflows/${id}`);
+                    }
+                  }}
                 >
                   ← Back to Workflow
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" disabled={!hasUnsavedChanges}>
                   <Save className="mr-2 size-4" />
                   Save Draft
                 </Button>
-                <Button onClick={saveWorkflow}>
+                <Button onClick={saveWorkflow} disabled={!hasUnsavedChanges}>
                   <Play className="mr-2 size-4" />
                   Save Changes
                 </Button>
@@ -761,9 +796,15 @@ export default function WorkflowBuilderPage() {
             {builderMode === "visual" && (
               <VisualBuilder
                 steps={steps}
-                setSteps={setSteps}
+                setSteps={(newSteps) => {
+                  setSteps(newSteps);
+                  setHasUnsavedChanges(true);
+                }}
                 edges={edges}
                 onEdgesChange={(updatedEdges) => {
+                  if (JSON.stringify(edges) !== JSON.stringify(updatedEdges)) {
+                    setHasUnsavedChanges(true);
+                  }
                   setEdges(updatedEdges);
                 }}
                 onSave={saveWorkflow}
