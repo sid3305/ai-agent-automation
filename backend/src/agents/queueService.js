@@ -23,7 +23,7 @@ async function claimNextTask({ workerId = "worker-1" } = {}) {
 /**
  * completeTask - mark task completed, save results
  */
-async function completeTask(taskId, { success = true, stepResult = null } = {}) {
+async function completeTask(taskId, { success = true, stepResult = null, error = null } = {}) {
   const task = await Task.findById(taskId);
   if (!task) return null;
 
@@ -36,12 +36,14 @@ async function completeTask(taskId, { success = true, stepResult = null } = {}) 
       update.$set.status = "retrying";
       const archivedSteps = task.stepResults ? [...task.stepResults] : [];
       if (stepResult) archivedSteps.push(stepResult);
+      
+      const actualError = error || (stepResult && stepResult.error) || "Step execution failed";
 
       update.$push.retryHistory = {
         attempt: task.attempts,
         startedAt: task.startedAt,
         failedAt: new Date(),
-        error: "Step execution failed or timed out",
+        error: actualError,
         stepResults: archivedSteps
       };
 
