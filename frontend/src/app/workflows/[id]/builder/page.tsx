@@ -248,6 +248,23 @@ export default function WorkflowBuilderPage() {
   const { addToast } = useToast();
   const [edges, setEdges] = useState<any[]>([]);
   const { setContext, clearContext } = useAssistantContext();
+  const [savedStepsSnapshot, setSavedStepsSnapshot] = useState<string>("[]");
+  const [savedEdgesSnapshot, setSavedEdgesSnapshot] = useState<string>("[]");
+
+  const hasUnsavedChanges = 
+    JSON.stringify(steps) !== savedStepsSnapshot || 
+    JSON.stringify(edges) !== savedEdgesSnapshot;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   async function fetchWorkflow() {
     try {
@@ -270,6 +287,7 @@ export default function WorkflowBuilderPage() {
         label: e.label || e.caseValue || e.condition?.toUpperCase() || "",
       }));
       setEdges(backendEdges);
+      setSavedEdgesSnapshot(JSON.stringify(backendEdges));
 
       const normalizedSteps: WorkflowStep[] = backendSteps.map((s) => ({
         id: s.stepId,
@@ -344,6 +362,7 @@ export default function WorkflowBuilderPage() {
       }));
 
       setSteps(normalizedSteps);
+      setSavedStepsSnapshot(JSON.stringify(normalizedSteps));
     } catch (err) {
       console.error("Failed to load workflow", err);
     } finally {
@@ -669,6 +688,8 @@ export default function WorkflowBuilderPage() {
         title: "Workflow saved",
         description: "Your workflow steps were updated successfully",
       });
+      setSavedStepsSnapshot(JSON.stringify(steps));
+      setSavedEdgesSnapshot(JSON.stringify(edges));
     } catch (err) {
       console.error("Save workflow failed:", err);
       addToast({
@@ -740,17 +761,36 @@ export default function WorkflowBuilderPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/*Visual Indicator */}
+                {hasUnsavedChanges && (
+                  <span className="text-sm font-medium text-amber-500 flex items-center gap-2 mr-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    Unsaved Changes
+                  </span>
+                )}
+
                 <Button
                   variant="outline"
-                  onClick={() => router.push(`/workflows/${id}`)}
+                  onClick={() => {
+                    if (hasUnsavedChanges) {
+                      if (window.confirm("You have unsaved changes. Are you sure you want to leave without saving?")) {
+                        router.push(`/workflows/${id}`);
+                      }
+                    } else {
+                      router.push(`/workflows/${id}`);
+                    }
+                  }}
                 >
                   ← Back to Workflow
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" disabled={!hasUnsavedChanges}>
                   <Save className="mr-2 size-4" />
                   Save Draft
                 </Button>
-                <Button onClick={saveWorkflow}>
+                <Button onClick={saveWorkflow} disabled={!hasUnsavedChanges}>
                   <Play className="mr-2 size-4" />
                   Save Changes
                 </Button>
