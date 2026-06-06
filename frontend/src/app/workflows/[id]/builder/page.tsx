@@ -251,10 +251,22 @@ export default function WorkflowBuilderPage() {
   const [savedStepsSnapshot, setSavedStepsSnapshot] = useState<string>("[]");
   const [savedEdgesSnapshot, setSavedEdgesSnapshot] = useState<string>("[]");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [invalidNodeIds, setInvalidNodeIds] = useState<string[]>([]);
 
   const hasUnsavedChanges = 
     JSON.stringify(steps) !== savedStepsSnapshot || 
     JSON.stringify(edges) !== savedEdgesSnapshot;
+
+  useEffect(() => {
+    if (steps.length === 0) {
+      setValidationErrors([]);
+      setInvalidNodeIds([]);
+      return;
+    }
+    const validation = validateGraphIntegrity(steps, edges);
+    setValidationErrors(validation.errors);
+    setInvalidNodeIds(validation.invalidNodeIds);
+  }, [steps, edges]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -266,15 +278,6 @@ export default function WorkflowBuilderPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
-
-  useEffect(() => {
-    if (steps.length === 0) {
-      setValidationErrors([]);
-      return;
-    }
-    const validation = validateGraphIntegrity(steps, edges);
-    setValidationErrors(validation.errors);
-  }, [steps, edges]);
 
   async function fetchWorkflow() {
     try {
@@ -493,7 +496,7 @@ export default function WorkflowBuilderPage() {
     });
   }
 
-  async function saveWorkflow() {
+    async function saveWorkflow(isDraft: boolean = false) {
     try {
       const enrichedSteps = enrichStepsWithEdges(steps, edges);
 
@@ -657,7 +660,7 @@ export default function WorkflowBuilderPage() {
               content: s.content ?? "",
             };
           }
-        // fallback (should never hit)
+    // fallback (should never hit)
         return {
           stepId: s.id,
           name: s.name,
@@ -666,16 +669,15 @@ export default function WorkflowBuilderPage() {
         };
       });
 
-      // 🛡️ Final Graph Integrity Validation Check
       const validation = validateGraphIntegrity(enrichedSteps, edges);
-      if (!validation.isValid) {
+      if (!isDraft && !validation.isValid) {
         console.error("Save workflow blocked due to validation errors:", validation.errors);
         addToast({
           type: "error",
           title: "Failed to Save Workflow",
           description: validation.errors[0] || "Your workflow contains orphaned edges or invalid connections. Please resolve them before saving.",
         });
-        return; // Halt execution entirely
+        return;
       }
 
       // 🚀 Topology is verified clean - proceed with secure API request
@@ -796,11 +798,11 @@ export default function WorkflowBuilderPage() {
                 >
                   ← Back to Workflow
                 </Button>
-                <Button variant="outline" disabled={!hasUnsavedChanges || validationErrors.length > 0}>
+                <Button variant="outline" onClick={() => saveWorkflow(true)} disabled={!hasUnsavedChanges}>
                   <Save className="mr-2 size-4" />
                   Save Draft
                 </Button>
-                <Button onClick={saveWorkflow} disabled={!hasUnsavedChanges || validationErrors.length > 0}>
+                <Button onClick={() => saveWorkflow(false)} disabled={!hasUnsavedChanges || validationErrors.length > 0}>
                   <Play className="mr-2 size-4" />
                   Save Changes
                 </Button>
@@ -823,12 +825,11 @@ export default function WorkflowBuilderPage() {
                   ))}
                 </ul>
                 <p className="mt-4 text-xs font-medium opacity-80">
-                  You must resolve these errors before the workflow can be saved or executed.
+                  You must resolve these errors before the workflow can be executed.
                 </p>
               </motion.div>
             )}
 
-            {/* Render Canvas vs List view toggles */}
             {builderMode === "visual" && (
               <VisualBuilder
                 steps={steps}
@@ -838,7 +839,7 @@ export default function WorkflowBuilderPage() {
                   setEdges(updatedEdges);
                 }}
                 onSave={saveWorkflow}
-                validationErrors={validationErrors}
+                invalidNodeIds={invalidNodeIds}
               />
             )}
 

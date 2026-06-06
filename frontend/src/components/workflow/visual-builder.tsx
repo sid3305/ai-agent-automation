@@ -238,14 +238,14 @@ export default function VisualBuilder({
   edges,
   onEdgesChange,
   onSave,
-  validationErrors = [],
+  invalidNodeIds = [],
 }: {
   steps: any[];
   setSteps: React.Dispatch<React.SetStateAction<any[]>>;
   edges: any[];
   onEdgesChange: (edges: any[]) => void;
   onSave?: () => void;
-  validationErrors?: string[];
+  invalidNodeIds?: string[];
 }) {
   usePerformanceMonitor("VisualBuilder");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -283,24 +283,10 @@ export default function VisualBuilder({
   const [computedNodes, setComputedNodes] = useState<Node[]>([]);
 
   useEffect(() => {
-    const invalidNodeIds = new Set<string>();
+    const nodesWithErrorsSet = new Set(invalidNodeIds);
     
-    validationErrors.forEach(err => {
-      const idMatch = err.match(/ID: ([^)]+)/);
-      if (idMatch && idMatch[1]) {
-        invalidNodeIds.add(idMatch[1]);
-      } else {
-        const nameMatch = err.match(/'([^']+)'/);
-        if (nameMatch && nameMatch[1]) {
-          const failingName = nameMatch[1];
-          const failingStep = steps.find(s => s.name === failingName || s.type === failingName);
-          if (failingStep) invalidNodeIds.add(failingStep.id);
-        }
-      }
-    });
-
-    setComputedNodes(computeNodes(steps, flowEdges, deleteNode, invalidNodeIds));
-  }, [steps, flowEdges, deleteNode, validationErrors]);
+    setComputedNodes(computeNodes(steps, flowEdges, deleteNode, nodesWithErrorsSet));
+  }, [steps, flowEdges, deleteNode, invalidNodeIds]);
 
   const [nodes, setNodes, _onNodesChange] = useNodesState(computedNodes);
 
