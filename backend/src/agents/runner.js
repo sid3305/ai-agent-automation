@@ -352,7 +352,6 @@ async function runWorkerLoop() {
 
   pollAndProcessQueue();
 }
-}
 
 /* -------------------------
    Startup
