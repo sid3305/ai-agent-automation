@@ -3,12 +3,19 @@ import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
 
 export default [
   // Backend: plain JS
   {
     files: ["backend/src/**/*.js"],
     ...js.configs.recommended,
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.commonjs,
+      },
+    },
     rules: {
       "no-unused-vars": "warn",
       "no-console": "off",
