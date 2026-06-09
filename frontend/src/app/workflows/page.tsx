@@ -155,7 +155,7 @@ const WorkflowCard = memo(
       setIsSaving(true);
       try {
         const res = await fetch(apiUrl(`/workflows/${workflow._id}`), {
-          method: "PATCH",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer " + (localStorage.getItem("token") ?? ""),
