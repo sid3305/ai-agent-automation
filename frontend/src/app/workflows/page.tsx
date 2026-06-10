@@ -187,27 +187,27 @@ const WorkflowCard = memo(
               {isEditing ? (
                 <div className="flex items-center gap-2">
                   <input
-  type="text"
-  value={editName}
-  onChange={(e) => setEditName(e.target.value)}
-  onBlur={() => {
-    if (isEditing && !isSaving) {
-      handleSave();
-    }
-  }}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === "Escape") {
-      setIsEditing(false);
-      setEditName(workflow.name);
-    }
-  }}
-  autoFocus
-  disabled={isSaving}
-  className="text-lg font-semibold bg-background border border-input rounded px-2 py-1 flex-1"
-/>
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onBlur={() => {
+                      if (isEditing && !isSaving) {
+                        handleSave();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSave();
+                      } else if (e.key === "Escape") {
+                        setIsEditing(false);
+                        setEditName(workflow.name);
+                      }
+                    }}
+                    autoFocus
+                    disabled={isSaving}
+                    className="text-lg font-semibold bg-background border border-input rounded px-2 py-1 flex-1"
+                  />
                   {isSaving && (
                     <span className="text-sm text-muted-foreground">Saving...</span>
                   )}
@@ -308,39 +308,39 @@ const WorkflowCard = memo(
             </div>
           </div>
 
-        <div className="mt-3 flex items-center justify-between border-t pt-3">
-          <span className="text-xs text-muted-foreground font-mono truncate max-w-[160px]">
-            {workflow._id.slice(0, 8)}...
-          </span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onCopy(workflow._id);
-                }}
-              >
-                {isCopied ? (
-              <>
-                <Check className="size-3 text-green-500" />
-                <span className="text-green-500">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="size-3" />
-                Copy ID
-              </>
-            )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Copy workflow ID</TooltipContent>
-          </Tooltip>
-        </div>
-      </Card>
-    </motion.div>
+          <div className="mt-3 flex items-center justify-between border-t pt-3">
+            <span className="text-xs text-muted-foreground font-mono truncate max-w-[160px]">
+              {workflow._id.slice(0, 8)}...
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onCopy(workflow._id);
+                  }}
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="size-3 text-green-500" />
+                      <span className="text-green-500">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3" />
+                      Copy ID
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Copy workflow ID</TooltipContent>
+            </Tooltip>
+          </div>
+        </Card>
+      </motion.div>
     );
   }
 );
@@ -390,12 +390,12 @@ export default function WorkflowsPage() {
         },
       });
       const data = await res.json();
-      
+
       // POINT 3 FIX: Safely extract array regardless of API wrapper
-      const workflowsArray = Array.isArray(data) 
-        ? data 
+      const workflowsArray = Array.isArray(data)
+        ? data
         : (data.workflows || data.data || []);
-        
+
       setWorkflows(workflowsArray);
     } catch (err) {
       console.error("Failed to fetch workflows:", err);
@@ -576,7 +576,7 @@ export default function WorkflowsPage() {
             ) : (
               // Workflows exist! Show the new Toolbar and Grid
               <div className="space-y-6">
-                
+
                 {/* ─── Control Toolbar ─── */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="relative flex-1">
