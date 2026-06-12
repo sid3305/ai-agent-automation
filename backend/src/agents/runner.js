@@ -163,9 +163,39 @@ async function runWorkerLoop() {
           stepsMap[getStepId(s)] = s;
         });
 
-        // 🔥 find start node (no incoming edges)
-        const targetSet = new Set(edges.map((e) => e.target));
-        let currentStep = steps.find((s) => !targetSet.has(getStepId(s)));
+        // -------------------------------------------------------------
+        // 🔥 RESUMABLE PATH HANDLING (Issue #57 state management)
+        // -------------------------------------------------------------
+        const resumeFromStepId = task.resumeFromStepId || task.metadata?.resumeFromStepId;
+        let currentStep = null;
+
+        if (resumeFromStepId && Array.isArray(task.stepResults) && task.stepResults.length > 0) {
+          console.log(`🔄 Resuming task execution path from step: ${resumeFromStepId}`);
+          
+          // 1. Context Reconstruction Engine
+          task.stepResults.forEach((pastResult) => {
+            context.results.push(pastResult);
+            context.last = {
+              input: pastResult.input,
+              output: pastResult.output,
+            };
+          });
+
+          // 2. Direct Pointer Redirection to specific failure node
+          currentStep = stepsMap[resumeFromStepId];
+
+          if (!currentStep) {
+            console.warn(`⚠️ Target resume step ${resumeFromStepId} not found in graph definition. Falling back to root configuration.`);
+          }
+        }
+
+        // Standard entry mode fallback (no resume parameters matching)
+        if (!currentStep) {
+          // find start node (no incoming edges)
+          const targetSet = new Set(edges.map((e) => e.target));
+          currentStep = steps.find((s) => !targetSet.has(getStepId(s)));
+        }
+        // -------------------------------------------------------------
 
         let visited = new Set();
 
@@ -308,7 +338,6 @@ async function runWorkerLoop() {
           workflowId: task.workflowId,
         }
       );
-
 
     } catch (error) {
       console.error("❌ Worker loop error:", error);
