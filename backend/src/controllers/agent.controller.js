@@ -1,5 +1,5 @@
 const Agent = require("../models/agent.model");
-const groq = require("../services/groq.service");
+const { runLLM } = require("../agents/llmAdapter");
 const { storeMemory, retrieveMemory } = require("../services/memoryService");
 
 /** Helpers */
@@ -97,6 +97,10 @@ async function deleteAgent(req, res) {
  * Run agent in playground - POST /api/agents/:id/run
  * Body: { prompt, useMemory }
  * Returns: { response, retrievedMemory }
+ *
+ * Uses the same runLLM() adapter that workflow LLM steps use
+ * (backend/src/agents/llmAdapter.js) instead of calling a provider
+ * SDK directly. Supports Groq, OpenAI, Gemini, Ollama, HuggingFace.
  */
 async function runAgent(req, res) {
   try {
@@ -114,54 +118,46 @@ async function runAgent(req, res) {
 
     // 1. Retrieve semantic memory if enabled
     let retrievedMemory = [];
-    let memoryContext = "";
+    let finalPrompt = prompt;
 
     if (useMemory) {
       retrievedMemory = await retrieveMemory(agent, prompt, 5, 0.45);
       if (retrievedMemory.length > 0) {
-        memoryContext =
-          "\n\nRelevant memory context:\n" +
-          retrievedMemory.map((m) => `- ${m.content}`).join("\n");
+        const memoryText = retrievedMemory
+          .map((m, i) => `Memory ${i + 1}:\n${m.content}`)
+          .join("\n\n");
+
+        finalPrompt = `SYSTEM INSTRUCTION:
+You are ${agent.name}. ${agent.description || ""}
+The following MEMORY is factual and must be used when relevant.
+
+MEMORY:
+${memoryText}
+
+USER QUESTION:
+${prompt}`;
       }
     }
 
-    // 2. Build messages
-    const messages = [
-      {
-        role: "system",
-        content:
-          `You are ${agent.name}. ${agent.description || ""}${memoryContext}`.trim(),
-      },
-      { role: "user", content: prompt },
-    ];
+    // 2. Run through the shared multi-provider LLM adapter
+    const llmRes = await runLLM(finalPrompt, {
+      provider,
+      model,
+      temperature,
+      maxTokens: agent.config?.maxTokens || 1024,
+    });
 
-    // 3. Call LLM — currently supports groq, extend for other providers
-    let responseText = "";
-
-    if (provider === "groq") {
-      const completion = await groq.chat.completions.create({
-        model,
-        messages,
-        temperature,
-        max_tokens: agent.config?.maxTokens || 1024,
-      });
-      responseText = completion.choices[0]?.message?.content || "";
-    } else {
-      // Fallback for unsupported providers in playground
-      return sendError(res, 400, `provider_not_supported_in_playground: ${provider}`);
-    }
-
-    // 4. Store conversation in memory if enabled
-    if (useMemory) {
+    // 3. Store conversation in memory if enabled
+    if (useMemory && llmRes.text) {
       await storeMemory(
         agent,
-        `User: ${prompt}\nAssistant: ${responseText}`,
+        JSON.stringify({ user: prompt, assistant: llmRes.text }),
         { type: "conversation", source: "playground" }
       );
     }
 
     return sendOK(res, {
-      response: responseText,
+      response: llmRes.text,
       retrievedMemory: retrievedMemory.map((m) => ({
         content: m.content,
         score: parseFloat(m.score.toFixed(3)),
@@ -171,7 +167,7 @@ async function runAgent(req, res) {
     });
   } catch (err) {
     console.error("runAgent error", err);
-    return sendError(res, 500, "server_error");
+    return sendError(res, 500, err.message || "server_error");
   }
 }
 
