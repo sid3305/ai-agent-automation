@@ -45,12 +45,9 @@ function resolveWorkflowFilePath(filePath) {
     throw new Error('Invalid file path: path escapes workflow directory');
   }
 
-  return resolvedPath;
+  return normalized;
 }
 
-/**
- * Core execution engine wrapper with built-in timeout enforcements
- */
 async function executeStep(step, context = {}, agent = null) {
   const validatedStepId = step.stepId || step.id || step.name || null;
   const explicitTimeout = Number(step.timeoutMs ?? step.timeout);
@@ -123,9 +120,15 @@ async function internalExecuteStep(step, context, agent, validatedStepId, finalT
           })
           .join('\n\n');
 
-        if (memoryText.length > MAX_MEMORY_CHARS) {
-          memoryText = memoryText.slice(0, MAX_MEMORY_CHARS);
-        }
+        if (memories.length > 0) {
+          const MAX_MEMORY_CHARS = 4000;
+
+          let memoryText = memories
+            .map((m, i) => {
+              const parsed = JSON.parse(m.content);
+              return `Memory ${i + 1}:\nUser: ${parsed.user}\nAssistant: ${parsed.assistant}`;
+            })
+            .join("\n\n");
 
         finalPrompt = `SYSTEM INSTRUCTION:\nYou are an AI agent with persistent memory.\nThe following MEMORY is factual and must be used when answering.\n\nMEMORY:\n${memoryText}\n\nUSER QUESTION:\n${prompt}\n\nUse the MEMORY section to answer the question.`;
       } else {
@@ -136,6 +139,8 @@ async function internalExecuteStep(step, context, agent, validatedStepId, finalT
           averageSimilarity: 0,
         };
       }
+
+      return result;
     }
 
     const llmRes = await runLLM(finalPrompt, {
@@ -164,10 +169,71 @@ async function internalExecuteStep(step, context, agent, validatedStepId, finalT
         workflowId: context.workflow?._id,
         type: 'conversation',
       });
+
+      const result = {
+        stepId: step.stepId || null,
+        type: "http",
+        tool: "http",
+        input: interpolate(step.url || "", ctx),
+        output: response.data,
+        success: response.status >= 200 && response.status < 300,
+        timestamp: new Date(),
+        duration: Date.now() - start,
+      };
+
+      ctx.registerStep(step.stepId || step.name, step.alias, {
+        input: interpolate(step.url || "", ctx),
+        prompt: null,
+        output: response.data,
+        raw: response,
+        success: response.status >= 200 && response.status < 300,
+        timestamp: new Date(),
+        duration: Date.now() - start,
+      });
+
+      ctx.results.push(result);
+      ctx.last = { input: interpolate(step.url || "", ctx), output: response.data };
+
+      return result;
     }
 
-    return result;
-  }
+    // ----- EMAIL -----
+    if (step.type === "email") {
+      try {
+        const nodemailer = require("nodemailer");
+
+        const transporter = nodemailer.createTransport({
+          host: process.env.EMAIL_HOST,
+          port: Number(process.env.EMAIL_PORT),
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
+
+        const to = interpolate(step.to || "", ctx);
+        const subject = interpolate(step.subject || "", ctx);
+        const text = interpolate(step.text || "", ctx);
+        const html = interpolate(step.html || "", ctx);
+
+        const info = await transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to,
+          subject,
+          text,
+          html,
+        });
+
+        const result = {
+          stepId: step.stepId,
+          type: "email",
+          tool: "email",
+          input: { to, subject, text, html },
+          output: { messageId: info.messageId, accepted: info.accepted },
+          success: true,
+          timestamp: new Date(),
+          duration: Date.now() - start,
+        };
 
   if (stepType === 'delay') {
     const sec = Number(step.seconds ?? step.delay ?? step.prompt ?? 0);
@@ -242,7 +308,6 @@ async function internalExecuteStep(step, context, agent, validatedStepId, finalT
         timestamp: new Date()
       };
     }
-  }
 
   // ----- INTEGRATIONS & BASELINE CONDITIONAL ENGINES -----
   if (stepType === 'document_query') {

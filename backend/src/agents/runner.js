@@ -1,13 +1,13 @@
-const { writeLog } = require("./logger");
-const mongoose = require("mongoose");
-const Task = require("../models/task.model");
-const Workflow = require("../models/workflow.model");
-const SystemSettings = require("../models/systemSettings.model");
-const { claimNextTask, completeTask } = require("./queueService");
-const { executeStep } = require("./executor");
-const telemetryService = require("../services/telemetry.service");
-const WORKER_ID = process.env.WORKER_ID || "agent-1";
-require("dotenv").config();
+const { writeLog } = require('./logger');
+const mongoose = require('mongoose');
+const Task = require('../models/task.model');
+const Workflow = require('../models/workflow.model');
+const SystemSettings = require('../models/systemSettings.model');
+const { claimNextTask, completeTask } = require('./queueService');
+const { executeStep } = require('./executor');
+const telemetryService = require('../services/telemetry.service');
+const WORKER_ID = process.env.WORKER_ID || 'agent-1';
+require('dotenv').config();
 
 /* -------------------------
    Settings cache
@@ -34,10 +34,7 @@ function sleep(ms) {
 async function getGlobalWorkerSettings() {
   const now = Date.now();
 
-  if (
-    cachedWorkerSettings &&
-    now - lastSettingsFetch < SETTINGS_REFRESH_MS
-  ) {
+  if (cachedWorkerSettings && now - lastSettingsFetch < SETTINGS_REFRESH_MS) {
     return cachedWorkerSettings;
   }
 
@@ -49,7 +46,7 @@ async function getGlobalWorkerSettings() {
 
     return cachedWorkerSettings;
   } catch (err) {
-    console.error("⚠️ Failed to load worker settings:", err.message);
+    console.error('⚠️ Failed to load worker settings:', err.message);
     return SAFE_FALLBACK_SETTINGS;
   }
 }
@@ -63,8 +60,8 @@ async function runWorkerLoop() {
   if (isRunningLoop) return;
   isRunningLoop = true;
 
-  console.log("👷 Agent Runner Started… waiting for tasks");
-  writeLog("Runner started", "info", { workerId: WORKER_ID });
+  console.log('👷 Agent Runner Started… waiting for tasks');
+  writeLog('Runner started', 'info', { workerId: WORKER_ID });
 
   while (true) {
     try {
@@ -83,25 +80,23 @@ async function runWorkerLoop() {
       // Mark task running
       // -------------------------
       await Task.findByIdAndUpdate(task._id, {
-        status: "running",
+        status: 'running',
         startedAt: new Date(),
       });
 
       console.log(`📝 Task claimed: ${task._id}`);
-      writeLog("Task claimed", "info", {
+      writeLog('Task claimed', 'info', {
         workerId: WORKER_ID,
         taskId: task._id,
         workflowId: task.workflowId,
       });
 
-      const workflow = task.workflowId
-        ? await Workflow.findById(task.workflowId).lean()
-        : null;
+      const workflow = task.workflowId ? await Workflow.findById(task.workflowId).lean() : null;
 
       let agent = null;
 
       if (workflow?.agentId) {
-        const Agent = require("../models/agent.model");
+        const Agent = require('../models/agent.model');
         agent = await Agent.findById(workflow.agentId).lean();
       }
 
@@ -109,12 +104,12 @@ async function runWorkerLoop() {
       const context = {
         ...(task.input || {}),
         timestampIso: now.toISOString(),
-        timestamp: now.toLocaleString("en-US", {
-          dateStyle: "long",
-          timeStyle: "short",
+        timestamp: now.toLocaleString('en-US', {
+          dateStyle: 'long',
+          timeStyle: 'short',
         }),
-        date: now.toLocaleDateString("en-US", { dateStyle: "long" }),
-        time: now.toLocaleTimeString("en-US", { timeStyle: "short" }),
+        date: now.toLocaleDateString('en-US', { dateStyle: 'long' }),
+        time: now.toLocaleTimeString('en-US', { timeStyle: 'short' }),
         workflow,
         taskId: task._id,
         userId: task.userId,
@@ -127,12 +122,11 @@ async function runWorkerLoop() {
       const steps =
         Array.isArray(task.steps) && task.steps.length > 0
           ? task.steps
-          : Array.isArray(task.metadata?.steps)
-            && task.metadata.steps.length > 0
-              ? task.metadata.steps
-              : Array.isArray(workflow?.metadata?.steps)
-                ? workflow.metadata.steps
-                : [];
+          : Array.isArray(task.metadata?.steps) && task.metadata.steps.length > 0
+            ? task.metadata.steps
+            : Array.isArray(workflow?.metadata?.steps)
+              ? workflow.metadata.steps
+              : [];
 
       const edges =
         Array.isArray(task.metadata?.edges) && task.metadata.edges.length > 0
@@ -144,7 +138,7 @@ async function runWorkerLoop() {
 
       if (steps.length > 0) {
         console.log(`⚙️ Executing ${steps.length} steps…`);
-        writeLog(`Executing ${steps.length} steps`, "info", {
+        writeLog(`Executing ${steps.length} steps`, 'info', {
           workerId: WORKER_ID,
           taskId: task._id,
           workflowId: task.workflowId,
@@ -156,7 +150,10 @@ async function runWorkerLoop() {
 
         const stepsMap = {};
         steps.forEach((s) => {
-          if (s) stepsMap[getStepId(s)] = s;
+          if (s) {
+            if (s.type) s.type = String(s.type).toLowerCase();
+            stepsMap[getStepId(s)] = s;
+          }
         });
 
         // -------------------------------------------------------------
@@ -167,7 +164,7 @@ async function runWorkerLoop() {
 
         if (resumeFromStepId && Array.isArray(task.stepResults) && task.stepResults.length > 0) {
           console.log(`🔄 Resuming task execution path from step: ${resumeFromStepId}`);
-          
+
           task.stepResults.forEach((pastResult) => {
             if (pastResult) {
               context.results.push(pastResult);
@@ -181,7 +178,9 @@ async function runWorkerLoop() {
           currentStep = stepsMap[resumeFromStepId];
 
           if (!currentStep) {
-            console.warn(`⚠️ Target resume step ${resumeFromStepId} not found in graph definition.`);
+            console.warn(
+              `⚠️ Target resume step ${resumeFromStepId} not found in graph definition.`
+            );
           }
         }
 
@@ -189,84 +188,179 @@ async function runWorkerLoop() {
           const targetSet = new Set(edges.map((e) => e.target));
           currentStep = steps.find((s) => !targetSet.has(getStepId(s)));
         }
-        // -------------------------------------------------------------
 
-        let visited = new Set();
-        let stepCount = 0;
-        const MAX_STEPS = 50;
-
-        while (currentStep && stepCount < MAX_STEPS) {
-          stepCount++;
-          if (stepCount >= MAX_STEPS) {
-            console.warn("⚠️ Max steps reached, stopping execution");
-            success = false;
+        function getNextEdge(stepLocal, resultLocal) {
+          if (stepLocal.type === 'condition') {
+            return edges.find((e) => e.source === getStepId(stepLocal) && e.condition === resultLocal.branch);
           }
-
-          visited.add(getStepId(currentStep));
-
-          const result = await executeStep(currentStep, context, agent);
-
-          result.name = currentStep.name;
-          result.type = currentStep.type;
-
-          await Task.findByIdAndUpdate(task._id, {
-            $push: { stepResults: result },
-          });
-
-          context.results.push(result);
-          context.last = {
-            input: result.input,
-            output: result.output,
-          };
-
-          if (!result.success) {
-            success = false;
-            break;
-          }
-
-          let nextEdge = null;
-
-          // ✅ CONDITION
-          if (currentStep.type === "condition") {
-            const branch = result.branch;
-            nextEdge = edges.find(
-              (e) =>
-                e.source === getStepId(currentStep) &&
-                e.condition === branch
-            );
-          }
-
-          // ✅ SWITCH
-          else if (currentStep.type === "switch") {
-            const normalize = (v) => String(v || "").toLowerCase().trim();
-            const value = normalize(result.caseValue);
-
-            nextEdge = edges.find((e) => {
-              if (e.source !== getStepId(currentStep)) return false;
-              const edgeValue = normalize(e.caseValue);
-              return value.includes(edgeValue);
+          if (stepLocal.type === 'switch') {
+            const normalize = (v) => String(v || '').toLowerCase().trim();
+            const value = normalize(resultLocal.caseValue);
+            const nextEdge = edges.find((e) => {
+              if (e.source !== getStepId(stepLocal)) return false;
+              return value.includes(normalize(e.caseValue));
             });
-
-            if (!nextEdge) {
-              nextEdge = edges.find(
-                (e) => e.source === getStepId(currentStep) && !e.caseValue
-              );
-            }
+            return nextEdge || edges.find((e) => e.source === getStepId(stepLocal) && !e.caseValue);
           }
-
-          // ✅ DEFAULT
-          else {
-            nextEdge = edges.find((e) => e.source === getStepId(currentStep));
-          }
-
-          if (!nextEdge) break;
-          currentStep = stepsMap[nextEdge.target];
+          return edges.find((e) => e.source === getStepId(stepLocal));
         }
+
+        async function processBranch(startStep, branchContext, isSubBranch = false) {
+          let stepNode = startStep;
+          let stepCount = 0;
+          let branchSuccess = true;
+
+          while (stepNode && stepCount < 50) {
+            stepCount++;
+            const sId = getStepId(stepNode);
+            if ((stepNode.type === 'join' || stepNode.type === 'Join') && isSubBranch) {
+              return { success: true, branchContext, joinNode: stepNode };
+            }
+            if (stepNode.type === 'parallel' || stepNode.type === 'Parallel') {
+              const outEdges = edges.filter((e) => e.source === sId);
+              if (outEdges.length < 2) {
+                const errMsg = `Runtime Error: Parallel node requires at least 2 branches.`;
+                console.error(`❌ ${errMsg}`);
+                
+                const errorResult = {
+                  stepId: sId,
+                  type: 'parallel',
+                  input: 'Branch Validation',
+                  output: errMsg,
+                  success: false,
+                  timestamp: new Date()
+                };
+                
+                await Task.findByIdAndUpdate(task._id, { $push: { stepResults: errorResult } });
+                branchContext.results.push(errorResult);
+                
+                return { success: false, branchContext };
+              }
+
+              const strategy = stepNode.failureStrategy || 'fail-fast';
+              const parallelStartResult = {
+                stepId: sId,
+                type: 'parallel',
+                input: 'Parallel Execution Start',
+                output: `${outEdges.length} branches spawned concurrently...`,
+                success: true,
+                timestamp: new Date()
+              };
+              
+              await Task.findByIdAndUpdate(task._id, { $push: { stepResults: parallelStartResult } });
+              branchContext.results.push(parallelStartResult);
+
+              const branchPromises = outEdges.map((edge) => {
+                const targetStep = stepsMap[edge.target];
+                const isolatedContext = {
+                  ...branchContext,
+                  results: [...branchContext.results],
+                  last: branchContext.last ? { ...branchContext.last } : null
+                };
+                return processBranch(targetStep, isolatedContext, true);
+              });
+
+              let branchResults = [];
+              let parallelSuccess = true;
+
+              if (strategy === 'fail-fast') {
+                branchResults = await Promise.all(branchPromises);
+                if (branchResults.some((r) => !r.success)) parallelSuccess = false;
+              } else {
+                const settled = await Promise.allSettled(branchPromises);
+                branchResults = settled.map((res) => {
+                  if (res.status === 'fulfilled') {
+                    if (!res.value.success) parallelSuccess = false; 
+                    return res.value;
+                  } else {
+                    parallelSuccess = false; 
+                    return { success: false, branchContext: { last: { output: res.reason } } };
+                  }
+                });
+              }
+
+              const aggregatedOutputs = {};
+              const flatOutputs = [];
+              branchResults.forEach((r, index) => {
+                const targetId = outEdges[index].target;
+                const outputVal = r.branchContext?.last?.output || null;
+                aggregatedOutputs[targetId] = outputVal; 
+                flatOutputs.push(outputVal);             
+              });
+
+              branchContext.parallel = { results: aggregatedOutputs, flat: flatOutputs };
+              branchContext.last = { output: aggregatedOutputs };
+
+              if (!parallelSuccess && strategy === 'fail-fast') return { success: false, branchContext };
+
+              const uniqueJoinNodes = [...new Set(branchResults.map((r) => r.joinNode ? getStepId(r.joinNode) : 'MISSING_JOIN'))];
+
+              if (uniqueJoinNodes.includes('MISSING_JOIN') || uniqueJoinNodes.length > 1) {
+                const errMsg = `Join Synchronization Failed: All branches must converge to exactly one Join node. Detected: [${uniqueJoinNodes.join(', ')}]`;
+                console.error(`❌ ${errMsg}`);
+                
+                const errorResult = {
+                  stepId: sId,
+                  type: 'join',
+                  input: 'Checking branch convergence',
+                  output: errMsg,
+                  success: false,
+                  timestamp: new Date()
+                };
+                
+                await Task.findByIdAndUpdate(task._id, { $push: { stepResults: errorResult } });
+                branchContext.results.push(errorResult);
+                
+                return { success: false, branchContext };
+              }
+
+              const joinNode = branchResults.find((r) => r.joinNode)?.joinNode || null;
+
+              if (joinNode) {
+                const joinResult = {
+                  stepId: getStepId(joinNode),
+                  type: 'join',
+                  input: aggregatedOutputs,
+                  output: aggregatedOutputs,
+                  success: true,
+                  timestamp: new Date()
+                };
+                await Task.findByIdAndUpdate(task._id, { $push: { stepResults: joinResult } });
+                branchContext.results.push(joinResult);
+
+                const nextEdge = getNextEdge(joinNode, joinResult);
+                if (!nextEdge) break;
+                stepNode = stepsMap[nextEdge.target];
+                continue;
+              } else {
+                break;
+              }
+            }
+            const result = await executeStep(stepNode, branchContext, agent);
+            result.name = stepNode.name;
+            result.type = stepNode.type;
+
+            await Task.findByIdAndUpdate(task._id, { $push: { stepResults: result } });
+
+            branchContext.results.push(result);
+            branchContext.last = { input: result.input, output: result.output };
+
+            if (!result.success) return { success: false, branchContext };
+
+            const nextEdge = getNextEdge(stepNode, result);
+            if (!nextEdge) break;
+            stepNode = stepsMap[nextEdge.target];
+          }
+
+          return { success: branchSuccess, branchContext };
+        }
+        const finalExecution = await processBranch(currentStep, context, false);
+        success = finalExecution.success;
       } else {
         const llmResult = await executeStep(
           {
-            type: "llm",
-            prompt: task.input?.text || "Give a short summary.",
+            type: 'llm',
+            prompt: task.input?.text || 'Give a short summary.',
           },
           context,
           agent
@@ -281,21 +375,16 @@ async function runWorkerLoop() {
 
       await completeTask(task._id, { success });
 
-      const durationMs = task.startedAt
-        ? Date.now() - new Date(task.startedAt).getTime()
-        : 0;
+      const durationMs = task.startedAt ? Date.now() - new Date(task.startedAt).getTime() : 0;
 
-      const stepTypes = context.results.map((result) => result.type || "unknown");
-      telemetryService
-        .recordTaskMetrics({ stepTypes, durationMs })
-        .catch((err) => {
-          console.error("Telemetry failed:", err.message || err);
-        });
+      const stepTypes = context.results.map((result) => result.type || 'unknown');
+      telemetryService.recordTaskMetrics({ stepTypes, durationMs }).catch((err) => {
+        console.error('Telemetry failed:', err.message || err);
+      });
 
       console.log(`✅ Task ${task._id} completed. Success: ${success}`);
-
     } catch (error) {
-      console.error("❌ Worker loop error:", error);
+      console.error('❌ Worker loop error:', error);
       await sleep(SAFE_FALLBACK_SETTINGS.pollIntervalMs);
     }
   }
@@ -304,7 +393,7 @@ async function runWorkerLoop() {
 async function start() {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("📡 MongoDB connected for Agent Runner");
+    console.log('📡 MongoDB connected for Agent Runner');
   }
   runWorkerLoop();
 }
