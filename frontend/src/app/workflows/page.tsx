@@ -112,7 +112,7 @@ const WorkflowCard = memo(
     onEdit: (workflow: Workflow) => void;
     onDelete: (workflow: Workflow) => void;
     onUpdate: () => void;
-    onRenameSuccess: (id: string, newName: string) => void; 
+    onRenameSuccess: (id: string, newName: string) => void;
   }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(workflow.name);
@@ -147,7 +147,7 @@ const WorkflowCard = memo(
         if (!res.ok) throw new Error('Update failed');
         onUpdate(); // refresh parent
         onRenameSuccess(workflow._id, editName);
-        addToast({ type: "success", title: "Workflow renamed" });
+        addToast({ type: 'success', title: 'Workflow renamed' });
       } catch (err) {
         console.error(err);
         setEditName(workflow.name);
@@ -450,7 +450,7 @@ export default function WorkflowsPage() {
     setEditingWorkflow(workflow);
   }, []);
   const handleRenameSuccess = useCallback((id: string, newName: string) => {
-    setEditingWorkflow(prev => prev && prev._id === id ? { ...prev, name: newName } : prev);
+    setEditingWorkflow((prev) => (prev && prev._id === id ? { ...prev, name: newName } : prev));
   }, []);
 
   // ─── Filter Logic ───
@@ -653,7 +653,6 @@ export default function WorkflowsPage() {
                     ))}
                   </div>
                 )}
-              </div>
               </div>
             )}
           </div>
