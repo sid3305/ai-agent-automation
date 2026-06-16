@@ -218,10 +218,38 @@ async function runWorkerLoop() {
             }
             if (stepNode.type === 'parallel' || stepNode.type === 'Parallel') {
               const outEdges = edges.filter((e) => e.source === sId);
-              if (outEdges.length === 0) break;
+              if (outEdges.length < 2) {
+                const errMsg = `Runtime Error: Parallel node requires at least 2 branches.`;
+                console.error(`❌ ${errMsg}`);
+                
+                const errorResult = {
+                  stepId: sId,
+                  type: 'parallel',
+                  input: 'Branch Validation',
+                  output: errMsg,
+                  success: false,
+                  timestamp: new Date()
+                };
+                
+                await Task.findByIdAndUpdate(task._id, { $push: { stepResults: errorResult } });
+                branchContext.results.push(errorResult);
+                
+                return { success: false, branchContext };
+              }
 
               const strategy = stepNode.failureStrategy || 'fail-fast';
+              const parallelStartResult = {
+                stepId: sId,
+                type: 'parallel',
+                input: 'Parallel Execution Start',
+                output: `${outEdges.length} branches spawned concurrently...`,
+                success: true,
+                timestamp: new Date()
+              };
               
+              await Task.findByIdAndUpdate(task._id, { $push: { stepResults: parallelStartResult } });
+              branchContext.results.push(parallelStartResult);
+
               const branchPromises = outEdges.map((edge) => {
                 const targetStep = stepsMap[edge.target];
                 const isolatedContext = {
@@ -240,33 +268,56 @@ async function runWorkerLoop() {
                 if (branchResults.some((r) => !r.success)) parallelSuccess = false;
               } else {
                 const settled = await Promise.allSettled(branchPromises);
-                branchResults = settled.map((res) =>
-                  res.status === 'fulfilled' 
-                    ? res.value 
-                    : { success: false, branchContext: { last: { output: res.reason } } }
-                );
+                branchResults = settled.map((res) => {
+                  if (res.status === 'fulfilled') {
+                    if (!res.value.success) parallelSuccess = false; 
+                    return res.value;
+                  } else {
+                    parallelSuccess = false; 
+                    return { success: false, branchContext: { last: { output: res.reason } } };
+                  }
+                });
               }
 
-              const aggregatedOutputs = branchResults.map((r) => r.branchContext?.last?.output || null);
-              branchContext.parallel = { results: aggregatedOutputs };
+              const aggregatedOutputs = {};
+              const flatOutputs = [];
+              branchResults.forEach((r, index) => {
+                const targetId = outEdges[index].target;
+                const outputVal = r.branchContext?.last?.output || null;
+                aggregatedOutputs[targetId] = outputVal; 
+                flatOutputs.push(outputVal);             
+              });
+
+              branchContext.parallel = { results: aggregatedOutputs, flat: flatOutputs };
               branchContext.last = { output: aggregatedOutputs };
-
-              const parallelResult = {
-                stepId: sId,
-                type: 'parallel',
-                input: `${outEdges.length} branches spawned`,
-                output: aggregatedOutputs,
-                success: parallelSuccess,
-                timestamp: new Date()
-              };
-
-              await Task.findByIdAndUpdate(task._id, { $push: { stepResults: parallelResult } });
-              branchContext.results.push(parallelResult);
 
               if (!parallelSuccess && strategy === 'fail-fast') return { success: false, branchContext };
 
-              const successfulBranch = branchResults.find((r) => r.joinNode);
-              const joinNode = successfulBranch ? successfulBranch.joinNode : null;
+              const branchJoinNodes = branchResults
+                .filter((r) => r.joinNode)
+                .map((r) => getStepId(r.joinNode));
+              const uniqueJoinNodes = [...new Set(branchJoinNodes)];
+
+              if (uniqueJoinNodes.length > 1) {
+                const errMsg = `Join Synchronization Failed: Divergent Join Nodes detected (${uniqueJoinNodes.join(', ')})`;
+                console.error(`❌ ${errMsg}`);
+                
+                const errorResult = {
+                  stepId: sId,
+                  type: 'join',
+                  input: 'Checking branch convergence',
+                  output: errMsg,
+                  success: false,
+                  timestamp: new Date()
+                };
+                
+                await Task.findByIdAndUpdate(task._id, { $push: { stepResults: errorResult } });
+                branchContext.results.push(errorResult);
+                
+                return { success: false, branchContext };
+              }
+
+              const joinNode = branchResults.find((r) => r.joinNode)?.joinNode || null;
 
               if (joinNode) {
                 const joinResult = {
