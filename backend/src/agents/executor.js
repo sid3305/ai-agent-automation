@@ -309,6 +309,23 @@ Use the MEMORY section to answer the question.`;
     return { stepId: validatedStepId, type: "document_query", tool: "document", input: query, output: llmRes.text, success: true, timestamp: new Date() };
   }
 
+  // ----- PARALLEL / JOIN -----
+  if (step.type === "parallel") {
+    return { 
+      stepId: validatedStepId, type: "parallel", tool: "parallel", 
+      input: "Parallel Execution Start", output: "Branching...", 
+      success: true, timestamp: new Date() 
+    };
+  }
+
+  if (step.type === "join") {
+    return { 
+      stepId: validatedStepId, type: "join", tool: "join", 
+      input: "Merging Branches", output: context.last?.output, 
+      success: true, timestamp: new Date() 
+    };
+  }
+
   // ----- CONDITION -----
   if (step.type === "condition") {
     const normalize = (val) => String(val || "").toLowerCase().trim().replace(/[^\w\s]/g, "");
