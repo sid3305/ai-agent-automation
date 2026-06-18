@@ -74,18 +74,18 @@ Header max 100 chars, subject lowercase, no trailing period.
 
 | Skill | Use Case |
 |-------|----------|
-| next-best-practices | Next.js patterns: RSC boundaries, data fetching, route handlers, optimization |
-| next-cache-components | Next.js 16 PPR & caching: Cache Components, cacheLife, cacheTag, updateTag |
-| vercel-react-best-practices | React 19 best practices: hooks, performance, state management, patterns |
-| vercel-composition-patterns | Component composition: layout patterns, page architecture, responsive design |
-| typescript-advanced-types | Advanced TS: generics, utility types, conditional types, type guards |
-| tailwind-design-system | Tailwind CSS: design systems, components, theming, spacing, responsive utilities |
-| wcag-audit-patterns | Accessibility: WCAG compliance, semantic HTML, aria attributes, keyboard nav |
-| accessibility-compliance | A11y standards: color contrast, focus states, screen readers, inclusive patterns |
-| core-web-vitals | CWV optimization: LCP, INP, CLS tuning, performance metrics, page experience |
-| api-design-principles | REST API design: naming, versioning, error handling, pagination, security |
-| nodejs-backend-patterns | Node.js patterns: middleware, routing, error handling, async patterns, streams |
-| nodejs-express-server | Express.js: server setup, middleware chains, route handlers, request/response |
-| github-actions-docs | GitHub Actions: workflow syntax, triggers, matrices, artifacts, CI/CD pipelines |
-| deploy-to-vercel | Vercel deployments: zero-config, preview envs, analytics, edge functions |
-| eslint-prettier-config | Code quality: ESLint rules, Prettier formatting, git hooks, auto-fix setup |
+| next-best-practices | Build Next.js pages, fetch data, make fast |
+| next-cache-components | Cache data so pages load quicker |
+| vercel-react-best-practices | React: manage state, keep components fast |
+| vercel-composition-patterns | Build components for phone and desktop |
+| typescript-advanced-types | Catch mistakes early with TypeScript |
+| tailwind-design-system | Style pages, create themes, mobile design |
+| wcag-audit-patterns | Make sites work for everyone, all abilities |
+| accessibility-compliance | Accessible colors, focus states, screen readers |
+| core-web-vitals | Make pages load fast, feel responsive |
+| api-design-principles | Build APIs: name endpoints, handle errors |
+| nodejs-backend-patterns | Handle requests, async code patterns |
+| nodejs-express-server | Build web server with Express |
+| github-actions-docs | Automate tests and deployments |
+| deploy-to-vercel | Deploy Next.js app, preview changes |
+| eslint-prettier-config | Keep code clean: format, lint, check commits |
