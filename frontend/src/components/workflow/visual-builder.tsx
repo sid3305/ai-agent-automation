@@ -229,7 +229,8 @@ function computeNodes(
         ),
       },
       style: {
-        padding: '12px 16px',
+        padding: '12px 16px',ls frontend/src/utils
+ls frontend/src/app
         borderRadius: '12px',
         border: `1px solid ${hasError ? '#ef4444' : getNodeColor(step.type)}`,
         background: 'var(--card)',

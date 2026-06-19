@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "file-logger",
   "name": "File Logger",
   "description": "Append messages to a log file.",

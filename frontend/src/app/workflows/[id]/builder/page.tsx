@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { validateGraph } from '@/utils/graphValidation';
 import { useParams, useRouter } from 'next/navigation';

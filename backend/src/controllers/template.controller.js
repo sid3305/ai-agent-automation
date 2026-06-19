@@ -1,4 +1,4 @@
-﻿const fs = require("fs");
+const fs = require("fs");
 const path = require("path");
 const Workflow = require("../models/workflow.model");
 const { v4: uuidv4 } = require("uuid");
@@ -156,7 +156,7 @@ async function importTemplate(req, res) {
             metadata: normalizeWorkflowMetadata({ steps, edges }),
         });
 
-        res.json({ ok: true, workflow });
+        res.json({ ok: true, workflow, warnings: validation.warnings });
     } catch (err) {
         console.error("importTemplate error", err);
         res.status(500).json({ ok: false, error: "template_import_failed" });
