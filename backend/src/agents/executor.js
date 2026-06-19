@@ -20,35 +20,65 @@ async function executeStep(step, context = {}, agent = null) {
   const explicitTimeout = Number(step.timeoutMs ?? step.timeout);
   const finalTimeoutMs = !isNaN(explicitTimeout) && explicitTimeout > 0 ? explicitTimeout : 30000;
 
-  let timeoutId = null;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(`Step execution timed out after ${finalTimeoutMs}ms`));
-    }, finalTimeoutMs);
-  });
+  const stepConfig = step.config || step; 
+  const maxRetries = Math.max(0, Number(stepConfig.maxRetries) || 0);
+  const backoffMultiplier = Math.max(1, Number(stepConfig.backoffMultiplier) || 1);
+  let currentBackoffMs = 1000; 
 
-  try {
-    const result = await Promise.race([
-      internalExecuteStep(step, context, agent, validatedStepId, finalTimeoutMs),
-      timeoutPromise,
-    ]);
+  let lastResult = null;
 
-    return result;
-  } catch (err) {
-    const isTimeout = err.message?.includes('timed out');
-    return {
-      stepId: validatedStepId,
-      type: step.type || 'unknown',
-      tool: step.tool || 'unknown',
-      input: isTimeout ? '[timeout]' : '[error]',
-      output: err.message,
-      success: false,
-      error: err.stack ? String(err.stack).slice(0, 2000) : undefined,
-      timestamp: new Date(),
-    };
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let timeoutId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Step execution timed out after ${finalTimeoutMs}ms`));
+      }, finalTimeoutMs);
+    });
+
+    try {
+      const result = await Promise.race([
+        internalExecuteStep(step, context, agent, validatedStepId, finalTimeoutMs),
+        timeoutPromise,
+      ]);
+
+      lastResult = result;
+
+      if (result.success || result.requiresApproval) {
+        return result;
+      }
+
+      if (attempt < maxRetries) {
+        console.warn(`⚠️ Step '${validatedStepId}' failed (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`);
+        await new Promise(res => setTimeout(res, currentBackoffMs));
+        currentBackoffMs = Math.floor(currentBackoffMs * backoffMultiplier);
+        continue;
+      }
+
+    } catch (err) {
+      const isTimeout = err.message?.includes('timed out');
+      lastResult = {
+        stepId: validatedStepId,
+        type: step.type || 'unknown',
+        tool: step.tool || 'unknown',
+        input: isTimeout ? '[timeout]' : '[error]',
+        output: err.message,
+        success: false,
+        error: err.stack ? String(err.stack).slice(0, 2000) : undefined,
+        timestamp: new Date(),
+      };
+
+      if (attempt < maxRetries) {
+        console.warn(`⚠️ Step '${validatedStepId}' threw error (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`);
+        await new Promise(res => setTimeout(res, currentBackoffMs));
+        currentBackoffMs = Math.floor(currentBackoffMs * backoffMultiplier);
+        continue;
+      }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   }
+
+  return lastResult;
 }
 
 async function internalExecuteStep(step, context, agent, validatedStepId, timeoutMs) {

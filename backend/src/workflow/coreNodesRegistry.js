@@ -22,7 +22,9 @@ const coreNodes = [
     fields: [
       { name: "method", label: "Method", type: "select", options: ["GET", "POST", "PUT", "DELETE"], default: "GET", required: true },
       { name: "url", label: "URL", type: "text", required: true },
-      { name: "body", label: "Body (JSON)", type: "textarea" }
+      { name: "body", label: "Body (JSON)", type: "textarea" },
+      { name: "maxRetries", label: "Max Retries", type: "number", default: 0 },
+      { name: "backoffMultiplier", label: "Backoff Multiplier", type: "number", default: 2 }
     ]
   },
   {
@@ -57,7 +59,9 @@ const coreNodes = [
       { name: "serverId", label: "Server ID", type: "text", required: true },
       { name: "toolName", label: "Tool Name", type: "text", required: true },
       { name: "arguments", label: "Arguments (JSON)", type: "textarea" },
-      { name: "timeoutMs", label: "Timeout (ms)", type: "number", default: 30000 }
+      { name: "timeoutMs", label: "Timeout (ms)", type: "number", default: 30000 },
+      { name: "maxRetries", label: "Max Retries", type: "number", default: 0 },
+      { name: "backoffMultiplier", label: "Backoff Multiplier", type: "number", default: 2 }
     ]
   },
   {
