@@ -154,11 +154,26 @@ export default function WorkflowBuilderPage() {
       setWorkflowName(workflow.name);
 
       const backendSteps = workflow.metadata?.steps ?? [];
-      const backendEdges = (workflow.metadata?.edges ?? []).map((e: any) => ({
-        ...e,
-        id: e.id || generateNodeId('edge'), // ✅ Safe parsing fallback
-        label: e.label || e.caseValue || e.condition?.toUpperCase() || '',
-      }));
+      const backendEdges = (workflow.metadata?.edges ?? []).map((e: any) => {
+        let sourceHandle: string | undefined;
+        if (e.condition === 'true' || e.condition === 'false') {
+          sourceHandle = e.condition;
+        } else if (e.caseValue) {
+          sourceHandle = e.caseValue;
+        }
+        return {
+          ...e,
+          id: e.id || generateNodeId('edge'),
+          label: e.label || e.caseValue || e.condition?.toUpperCase() || '',
+          animated: true,
+          style: { strokeWidth: 2 },
+          sourceHandle,
+          labelStyle: { fill: 'var(--foreground)', fontSize: 12, fontWeight: 500 },
+          labelBgStyle: { fill: 'var(--card)', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2],
+          labelBgBorderRadius: 4,
+        };
+      });
       setEdges(backendEdges);
       setSavedEdgesSnapshot(JSON.stringify(backendEdges));
 
@@ -723,3 +738,4 @@ export default function WorkflowBuilderPage() {
     </AuthGuard>
   );
 }
+

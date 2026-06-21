@@ -10,6 +10,7 @@
       "stepId": "generate",
       "name": "Generate Content",
       "type": "llm",
+      "position": { "x": 0, "y": 0 },
       "prompt": "Write detailed content about: {{input.topic}}",
       "useMemory": false,
       "memoryTopK": 5
@@ -18,6 +19,7 @@
       "stepId": "save",
       "name": "Save Content To File",
       "type": "file",
+      "position": { "x": 0, "y": 180 },
       "action": "write",
       "path": "runtime/content.txt",
       "content": "{{last.output}}"
