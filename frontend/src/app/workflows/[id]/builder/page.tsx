@@ -506,6 +506,11 @@ export default function WorkflowBuilderPage() {
         else if (lowerType === 'document_query') legacyType = 'document_query';
         else if (lowerType === 'condition') legacyType = 'condition';
         else if (lowerType === 'switch') legacyType = 'switch';
+        else if (lowerType === 'file' || lowerType === 'email' || lowerType === 'browser') legacyType = lowerType;
+        else {
+          const matchingDef = nodeDefinitions.find((d) => d.id.toLowerCase() === lowerType);
+          if (matchingDef) legacyType = matchingDef.id;
+        }
         return {
           id: s.stepId,
           stepId: s.stepId,
