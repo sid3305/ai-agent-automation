@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { validateGraph } from '@/utils/graphValidation';
 import { useParams, useRouter } from 'next/navigation';
@@ -112,6 +112,9 @@ export default function WorkflowBuilderPage() {
   const [savedEdgesSnapshot, setSavedEdgesSnapshot] = useState<string>('[]');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [invalidNodeIds, setInvalidNodeIds] = useState<string[]>([]);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   const hasUnsavedChanges =
     JSON.stringify(steps) !== savedStepsSnapshot || JSON.stringify(edges) !== savedEdgesSnapshot;
@@ -461,6 +464,85 @@ export default function WorkflowBuilderPage() {
       });
     }
   }
+  async function generateWithAI(regenerate: boolean = false) {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    try {
+      const body: Record<string, unknown> = { description: aiPrompt };
+      if (regenerate && steps.length > 0) {
+        body.existingGraph = {
+          steps: steps.map((s) => ({
+            stepId: s.id,
+            name: s.name,
+            type: String(s.type).toLowerCase() === 'document' ? 'document_query' : String(s.type).toLowerCase(),
+            config: s.config || {},
+          })),
+          edges: edges.map((e) => ({
+            source: e.source,
+            target: e.target,
+            ...(e.condition ? { condition: e.condition } : {}),
+            ...(e.caseValue ? { caseValue: e.caseValue } : {}),
+          })),
+        };
+      }
+      const res = await fetch(apiUrl('/workflows/generate-ai'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Generation failed');
+
+      const generatedSteps = data.steps.map((s: any) => {
+        let legacyType = s.type;
+        const lowerType = String(s.type || '').toLowerCase();
+        if (lowerType === 'llm') legacyType = 'llm';
+        else if (lowerType === 'http') legacyType = 'http';
+        else if (lowerType === 'delay') legacyType = 'delay';
+        else if (lowerType === 'mcp') legacyType = 'mcp';
+        else if (lowerType === 'document_query') legacyType = 'document_query';
+        else if (lowerType === 'condition') legacyType = 'condition';
+        else if (lowerType === 'switch') legacyType = 'switch';
+        return {
+          id: s.stepId,
+          stepId: s.stepId,
+          name: s.name,
+          type: legacyType,
+          position: s.position,
+          config: s.config || {},
+        };
+      });
+
+      const generatedEdges = data.edges.map((e: any) => {
+        let sourceHandle: string | undefined;
+        if (e.condition === 'true' || e.condition === 'false') sourceHandle = e.condition;
+        else if (e.caseValue) sourceHandle = e.caseValue;
+        return {
+          ...e,
+          label: e.label || e.caseValue || (e.condition ? e.condition.toUpperCase() : '') || '',
+          animated: true,
+          style: { strokeWidth: 2 },
+          sourceHandle,
+          labelStyle: { fill: 'var(--foreground)', fontSize: 12, fontWeight: 500 },
+          labelBgStyle: { fill: 'var(--card)', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2],
+          labelBgBorderRadius: 4,
+        };
+      });
+
+      setSteps(generatedSteps);
+      setEdges(generatedEdges);
+      setBuilderMode('visual');
+      addToast({ type: 'success', title: 'Workflow generated', description: 'Review the graph and save when ready.' });
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Generation failed', description: err.message || 'Try again.' });
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -582,6 +664,39 @@ export default function WorkflowBuilderPage() {
                 </p>
               </motion.div>
             )}
+            {/* AI Generation Panel */}
+            <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <button
+                className="flex w-full items-center justify-between text-sm font-semibold text-primary"
+                onClick={() => setAiPanelOpen((v) => !v)}
+              >
+                <span>✨ Generate with AI</span>
+                <span>{aiPanelOpen ? '▲' : '▼'}</span>
+              </button>
+              {aiPanelOpen && (
+                <div className="mt-4 space-y-3">
+                  <Textarea
+                    placeholder="Describe your workflow in plain English… e.g. When a PDF is uploaded, summarize it and email me the result."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    rows={3}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={() => generateWithAI(false)} disabled={aiLoading || !aiPrompt.trim()}>
+                      {aiLoading ? 'Generating…' : 'Generate'}
+                    </Button>
+                    {steps.length > 0 && (
+                      <Button variant="outline" onClick={() => generateWithAI(true)} disabled={aiLoading || !aiPrompt.trim()}>
+                        {aiLoading ? 'Updating…' : 'Regenerate / Refine'}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Generated workflow opens in Visual Graph mode. Review and hit Save Changes when ready.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {builderMode === 'visual' && (
               <VisualBuilder

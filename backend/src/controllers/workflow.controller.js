@@ -9,6 +9,7 @@ const {
 const { migrateWorkflowSteps } = require('../workflow/migrations');
 const { getToolMetadata } = require('../tools/registry');
 const { coreNodes } = require('../workflow/coreNodesRegistry');
+const { generateWorkflowGraph } = require('../services/workflowGenerator.service');
 
 const RESERVED_WORDS = [
   'steps',
@@ -598,6 +599,35 @@ async function getNodeDefinitions(req, res) {
   }
 }
 
+async function generateWorkflowAI(req, res) {
+  try {
+    const { description, existingGraph } = req.body;
+
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({ ok: false, error: 'description is required' });
+    }
+
+    const graph = await generateWorkflowGraph({ description, existingGraph });
+
+    return res.json({ ok: true, steps: graph.steps, edges: graph.edges });
+  } catch (err) {
+    console.error('generateWorkflowAI error', err);
+    const knownValidationErrors = [
+      'description is required',
+      'Generated workflow failed schema validation',
+      'Duplicate stepIds',
+      'Generated workflow has edges referencing unknown steps',
+      'No JSON object found',
+    ];
+    const isValidationError = knownValidationErrors.some((msg) => err.message?.includes(msg));
+    return res.status(isValidationError ? 400 : 500).json({
+      ok: false,
+      error: isValidationError ? err.message : 'server_error',
+      details: err.details || undefined,
+    });
+  }
+}
+
 module.exports = {
   createWorkflow,
   listWorkflows,
@@ -612,4 +642,5 @@ module.exports = {
   exportWorkflow,
   cloneWorkflow,
   getNodeDefinitions,
+  generateWorkflowAI,
 };

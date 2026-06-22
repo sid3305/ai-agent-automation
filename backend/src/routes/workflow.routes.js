@@ -16,6 +16,7 @@ const {
   exportWorkflow,
   cloneWorkflow,
   getNodeDefinitions,
+  generateWorkflowAI,
 } = require('../controllers/workflow.controller');
 
 const {
@@ -32,6 +33,7 @@ router.get('/', listWorkflows);
 
 // IMPORTANT: specific routes FIRST
 router.get('/node-definitions', getNodeDefinitions);
+router.post('/generate-ai', expensiveLimiter, generateWorkflowAI);
 router.get('/:workflowId/export', exportWorkflow);
 router.put('/:workflowId/steps', updateWorkflowSteps);
 router.post('/:workflowId/add-task', addTaskToWorkflow);
