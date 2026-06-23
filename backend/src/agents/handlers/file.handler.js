@@ -12,21 +12,39 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
     recursive: true,
   });
 
-  if (config.action === 'read') {
-    return createStepResult({
-      stepId: validatedStepId,
-      type: 'file',
-      output: fs.readFileSync(filePath, 'utf8'),
-      success: true,
-    });
-  }
+const content = interpolate(config.content || context.last?.output || '', context);
 
-  const content = interpolate(config.content || context.last?.output || '', context);
-
-  if (config.action === 'append') {
-    fs.appendFileSync(filePath, content);
-  } else {
-    fs.writeFileSync(filePath, content);
+  switch (config.action) {
+    case 'read':
+      return createStepResult({
+        stepId: validatedStepId,
+        type: 'file',
+        success: true,
+        output: fs.readFileSync(filePath, 'utf8')
+      });
+    case 'append':
+      fs.appendFileSync(filePath, content);
+      break;
+    case 'write':
+      fs.writeFileSync(filePath, content);
+      break;
+    case 'remove':
+      fs.rmSync(filePath, { force: true });
+      break;
+    case 'list':
+      return createStepResult({
+        stepId: validatedStepId,
+        type: 'file',
+        success: true,
+        output: fs.readdirSync(path.dirname(filePath))
+      });
+    default:
+      return createStepResult({
+        stepId: validatedStepId,
+        type: 'file',
+        success: false,
+        output: `Unsupported action: ${config.action}`
+      });
   }
 
   return createStepResult({
