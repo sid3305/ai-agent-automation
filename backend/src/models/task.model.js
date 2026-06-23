@@ -16,6 +16,8 @@ const StepResultSchema = new mongoose.Schema(
     },
     input: { type: mongoose.Schema.Types.Mixed },
     output: { type: mongoose.Schema.Types.Mixed },
+    branch: { type: String },
+    caseValue: { type: String },
     error: { type: String },
     errorMetadata: { type: mongoose.Schema.Types.Mixed },
     success: { type: Boolean, default: true },

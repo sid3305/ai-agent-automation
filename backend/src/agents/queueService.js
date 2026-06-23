@@ -53,8 +53,7 @@ async function completeTask(taskId, { success = true, stepResult = null, error =
         error: actualError,
         stepResults: archivedSteps
       };
-
-      update.$set.stepResults = [];
+      update.$set.stepResults = archivedSteps.filter(res => res && res.success === true);
       update.$set.startedAt = null;
     } else {
       update.$set.status = "failed";
