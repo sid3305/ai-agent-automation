@@ -36,7 +36,7 @@ const content = interpolate(config.content || context.last?.output || '', contex
         stepId: validatedStepId,
         type: 'file',
         success: true,
-        output: fs.readdirSync(path.dirname(filePath))
+        output: fs.readdirSync(filePath)
       });
     default:
       return createStepResult({
