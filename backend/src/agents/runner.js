@@ -363,7 +363,8 @@ async function runWorkerLoop() {
                     r &&
                     r.stepId === getStepId(stepNode) &&
                     r.type !== 'parallel' &&
-                    r.type !== 'join'
+                    r.type !== 'join' &&
+                    r.success === true
                 )
               : null;
 
