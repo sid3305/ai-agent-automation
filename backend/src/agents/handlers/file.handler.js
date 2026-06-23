@@ -31,13 +31,23 @@ const content = interpolate(config.content || context.last?.output || '', contex
     case 'remove':
       fs.rmSync(filePath, { force: true });
       break;
-    case 'list':
+    case 'list': {
+      let targetDir = filePath;
+      try {
+        if (!fs.statSync(filePath).isDirectory()) {
+          targetDir = path.dirname(filePath);
+        }
+      } catch (error) {
+        targetDir = path.dirname(filePath);
+      }
+
       return createStepResult({
         stepId: validatedStepId,
         type: 'file',
         success: true,
-        output: fs.readdirSync(filePath)
+        output: fs.readdirSync(targetDir)
       });
+    }
     default:
       return createStepResult({
         stepId: validatedStepId,
