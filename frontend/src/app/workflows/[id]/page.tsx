@@ -600,18 +600,20 @@ function TaskItem({ taskId }: { taskId: string }) {
   }, [taskId]);
 
   if (!task) {
-    return <div className="loading loading-sm"></div>;
+    return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary m-4"></div>;
   }
 
   return (
-    <div className="card bg-base-200 shadow p-4">
+    <Card className="p-4 shadow-sm flex flex-col gap-1 items-start">
       <h3 className="text-lg font-semibold">{task.name}</h3>
-      <p className="text-sm opacity-70">Status: {task.status}</p>
+      <p className="text-sm text-muted-foreground">Status: {task.status}</p>
 
-      <a href={`/dashboard/tasks/${task._id}`} className="btn btn-sm btn-primary mt-3">
-        View Task
-      </a>
-    </div>
+      <Button size="sm" asChild className="mt-3">
+        <a href={`/dashboard/tasks/${task._id}`}>
+          View Task
+        </a>
+      </Button>
+    </Card>
   );
 }
 
@@ -645,30 +647,30 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
   }
 
   return (
-    <dialog id="createWorkflowTaskModal" className="modal">
-      <div className="modal-box">
+    <dialog id="createWorkflowTaskModal" className="bg-background text-foreground rounded-lg shadow-lg border border-border p-6 max-w-lg w-full backdrop:bg-black/80">
+      <div className="w-full">
         <h3 className="font-bold text-lg">Create Task</h3>
 
-        <form className="space-y-3 mt-4" onSubmit={createTask}>
+        <form className="space-y-4 mt-4" onSubmit={createTask}>
           <input
             type="text"
             name="name"
-            className="input input-bordered w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Task name"
             required
           />
 
           <textarea
             name="text"
-            className="textarea textarea-bordered w-full"
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Task input text (for LLM)"
             required
           />
 
-          <div className="modal-action">
-            <button
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
               onClick={() =>
                 (
                   document.getElementById('createWorkflowTaskModal') as HTMLDialogElement | null
@@ -676,11 +678,11 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
               }
             >
               Cancel
-            </button>
+            </Button>
 
-            <button type="submit" className="btn btn-primary">
+            <Button type="submit">
               Create
-            </button>
+            </Button>
           </div>
         </form>
       </div>
