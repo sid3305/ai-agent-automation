@@ -7,7 +7,9 @@ const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 
 async function register(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const name = req.body.name?.trim() || "";
+    const email = req.body.email?.trim();
+    const password = req.body.password?.trim();
 
     if (!email || !password) {
       return res.status(400).json({ error: "email and password required" });
@@ -58,7 +60,8 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email?.trim();
+    const password = req.body.password?.trim();
 
     if (!email || !password) {
       return res.status(400).json({ error: "email_and_password_required" });
