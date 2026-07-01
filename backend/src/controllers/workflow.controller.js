@@ -183,17 +183,39 @@ async function addTaskToWorkflow(req, res) {
       return res.status(403).json({ error: 'forbidden' });
 
     const { taskId } = req.body;
-    if (!taskId) return res.status(400).json({ error: 'taskId_required' });
 
-    if (workflow.tasks.includes(taskId)) {
+    if (!taskId) {
+      return res.status(400).json({ error: "taskId_required" });
+    }
+
+    // Verify the task exists
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        ok: false,
+        error: "task_not_found",
+      });
+    }
+
+    // Verify ownership
+    if (task.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        ok: false,
+        error: "forbidden",
+      });
+    }
+
+    // Prevent duplicate association
+    if (workflow.tasks.includes(task._id)) {
       return res.json({
         ok: true,
-        message: 'Task already exists in workflow',
+        message: "Task already exists in workflow",
         workflow,
       });
     }
 
-    workflow.tasks.push(taskId);
+    workflow.tasks.push(task._id);
     await workflow.save();
 
     res.json({ ok: true, workflow });
@@ -342,15 +364,15 @@ async function updateWorkflowSteps(req, res) {
     // Validate edges
     edges = Array.isArray(edges)
       ? edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label || '',
-          condition: e.condition || null,
-          caseValue: e.caseValue || null,
-          animated: e.animated ?? true,
-          style: e.style || { strokeWidth: 2 },
-        }))
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label || '',
+        condition: e.condition || null,
+        caseValue: e.caseValue || null,
+        animated: e.animated ?? true,
+        style: e.style || { strokeWidth: 2 },
+      }))
       : [];
 
     workflow.metadata = normalizeWorkflowMetadata({ steps, edges });
