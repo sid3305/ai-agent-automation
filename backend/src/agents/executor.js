@@ -32,7 +32,11 @@ async function executeStep(step, context = {}, agent = null) {
   if (stepConfig.agentId) {
     try {
       const AgentModel = require('../models/agent.model'); 
-      const fetchedAgent = await AgentModel.findById(stepConfig.agentId).lean();
+      const fetchedAgent = await AgentModel.findOne({ 
+        _id: stepConfig.agentId, 
+        userId: context.userId 
+      }).lean();
+      
       if (fetchedAgent) {
         stepAgent = fetchedAgent;
       } else {
