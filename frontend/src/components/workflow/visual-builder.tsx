@@ -993,8 +993,11 @@ export default function VisualBuilder({
                 </label>
                 <select
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background"
-                  value={selectedStep.agentId || ''}
-                  onChange={(e) => updateStep(selectedStep.id, { agentId: e.target.value })}
+                  value={selectedStep.config?.agentId || selectedStep.agentId || ''}
+                  onChange={(e) => updateStep(selectedStep.id, { 
+                    agentId: e.target.value,
+                    config: { ...selectedStep.config, agentId: e.target.value }
+                  })}
                 >
                   <option value="">Workflow Default Agent</option>
                   {agents.map((ag) => (
