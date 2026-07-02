@@ -55,6 +55,12 @@ type StepResult = {
   output?: StepOutput;
   success: boolean;
   timestamp: string;
+  executedBy?: {
+    agentId?: string;
+    agentName?: string;
+    provider?: string;
+    model?: string;
+  };
 };
 
 type TaskMetadataStep = {
@@ -618,13 +624,21 @@ export default function TaskDetailPage() {
                               <div className="flex-1">
                                 <CollapsibleTrigger className="group flex w-full items-start justify-between text-left">
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-3">
                                       <h3 className="font-semibold">
                                         {stepMetadata?.name || step.stepId}
                                       </h3>
                                       <Badge variant="outline" className="text-xs">
                                         {step.type}
                                       </Badge>
+                                      {step.executedBy?.agentName && (
+                                        <Badge variant="secondary" className="text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 flex items-center gap-1.5">
+                                          <Bot className="size-3" />
+                                          {step.executedBy.agentName}
+                                          <span className="opacity-40 mx-0.5">|</span>
+                                          {step.executedBy.provider}/{step.executedBy.model}
+                                        </Badge>
+                                      )}
                                     </div>
 
                                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">

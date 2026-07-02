@@ -144,15 +144,20 @@ function getTypeColor(type: string) {
  * Finds the node definition by type and returns the first non-empty field values.
  * Falls back gracefully for types not yet loaded.
  */
-function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[] = []): string {
+function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[] = [], agentMap: Record<string, string> = {}): string {
   const lowerType = (step.type || '').toLowerCase();
   const def = nodeDefinitions.find((d) => d.id.toLowerCase() === lowerType);
 
   if (def && def.fields.length > 0) {
     const parts: string[] = [];
     for (const field of def.fields) {
-      const val = step.config?.[field.name] ?? (step as any)[field.name];
+      let val = step.config?.[field.name] ?? (step as any)[field.name];
+      
       if (val !== undefined && val !== null && String(val).trim() !== '') {
+        if ((field.name === 'agentId' || field.label.includes('Agent')) && agentMap[val as string]) {
+          val = agentMap[val as string];
+        }
+
         const display = String(val).slice(0, 160);
         parts.push(
           `${field.label}: ${display}${display.length < String(val).length ? '\u2026' : ''}`
@@ -169,6 +174,10 @@ function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[
   if (config.prompt || anyStep.prompt) return (config.prompt || anyStep.prompt).slice(0, 160);
   if (config.url && config.method) return `${config.method} ${config.url}`;
   if (config.seconds) return `Wait for ${config.seconds} seconds`;
+  
+  if (lowerType === 'agent_call') {
+    return config.agentId ? 'Delegated' : 'Target agent not set';
+  }
 
   return 'No configuration';
 }
@@ -298,7 +307,7 @@ export default function WorkflowDetailPage() {
       stepId: step.stepId,
       stepName: step.name ?? 'Unnamed step',
       stepType: step.type,
-      stepDescription: getStepDescription(step, nodeDefinitions),
+      stepDescription: getStepDescription(step, nodeDefinitions, agentMap),
     });
   }
 
@@ -535,7 +544,7 @@ export default function WorkflowDetailPage() {
                           </div>
 
                           <p className="text-sm text-muted-foreground line-clamp-3">
-                            {getStepDescription(step, nodeDefinitions)}
+                            {getStepDescription(step, nodeDefinitions, agentMap)}
                           </p>
                         </div>
                       </div>
