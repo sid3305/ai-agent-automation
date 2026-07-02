@@ -32,8 +32,9 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
     type: 'document_query',
     tool: 'document',
     input: query,
-    output: llmRes.text,
-    success: true,
+    output: llmRes?.error ? llmRes.error : llmRes?.text,
+    error: llmRes?.error,
+    success: !llmRes?.error,
   });
 }
 

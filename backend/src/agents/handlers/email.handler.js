@@ -22,14 +22,18 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
     html: interpolate(config.html || '', context),
   });
 
+  const hasRejected = info?.rejected && info.rejected.length > 0;
+
   return createStepResult({
     stepId: validatedStepId,
     type: 'email',
     output: {
-      messageId: info.messageId,
-      accepted: info.accepted,
+      messageId: info?.messageId,
+      accepted: info?.accepted,
+      rejected: info?.rejected,
     },
-    success: true,
+    error: hasRejected ? `Email rejected for recipients: ${info.rejected.join(', ')}` : undefined,
+    success: !hasRejected,
   });
 }
 

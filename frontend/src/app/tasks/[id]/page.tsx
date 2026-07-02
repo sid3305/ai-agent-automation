@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   Globe,
   Play,
-} from "lucide-react";
+  RotateCcw,
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -148,6 +149,7 @@ export default function TaskDetailPage() {
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [approvalFeedback, setApprovalFeedback] = useState("");
   const [isResuming, setIsResuming] = useState(false);
+  const [isRerunning, setIsRerunning] = useState(false);
 
   async function handleResumeTask(resumeStepId?: string) {
     if (!task) return;
@@ -180,6 +182,49 @@ export default function TaskDetailPage() {
       });
     } finally {
       setIsResuming(false);
+    }
+  }
+  async function handleRerunFromFailed() {
+    if (!task) return;
+
+    setIsRerunning(true);
+
+    try {
+      const res = await fetch(
+        apiUrl(`/tasks/${task._id}/rerun-from-failed`),
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              "Bearer " + localStorage.getItem("token"),
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.ok) {
+        addToast({
+          title: "Task Created",
+          description: "Rerunning from failed step.",
+          type: "success",
+        });
+
+        router.push(`/tasks/${data.task._id}`);
+      } else {
+        throw new Error(
+          data.error || "Failed to rerun task"
+        );
+      }
+    } catch (err: any) {
+      addToast({
+        title: "Error",
+        description:
+          err.message || "Failed to rerun task",
+        type: "error",
+      });
+    } finally {
+      setIsRerunning(false);
     }
   }
 
@@ -309,11 +354,11 @@ export default function TaskDetailPage() {
 
       failedStep: failedStep
         ? {
-            stepId: failedStep.stepId,
-            name: failedStep.name,
-            type: failedStep.type,
-            output: failedStep.outputSummary,
-          }
+          stepId: failedStep.stepId,
+          name: failedStep.name,
+          type: failedStep.type,
+          output: failedStep.outputSummary,
+        }
         : undefined,
 
       status:
@@ -364,15 +409,30 @@ export default function TaskDetailPage() {
                   {task.status}
                 </Badge>
                 {["failed", "retrying", "rejected"].includes(task.status) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleResumeTask()} 
-                    disabled={isResuming}
-                    className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
-                  >
-                    {isResuming ? 'Resuming...' : 'Resume Execution'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResumeTask()}
+                      disabled={isResuming}
+                      className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                    >
+                      {isResuming ? "Resuming..." : "Resume Execution"}
+                    </Button>
+
+                    {task.status === "failed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRerunFromFailed}
+                        disabled={isRerunning}
+                        className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                      >
+                        <RotateCcw className="mr-2 size-4" />
+                        {isRerunning ? "Creating..." : "Rerun from Failed"}
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
               <p className="mt-2 text-muted-foreground">Workflow id: {task.workflowId}</p>

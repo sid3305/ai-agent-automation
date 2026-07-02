@@ -179,7 +179,29 @@ async function runWorkerLoop() {
         // 🔥 DETERMINISTIC REPLAY RESUMABLE EXECUTION
         // -------------------------------------------------------------
         const targetSet = new Set(edges.map((e) => e.target));
-        const currentStep = steps.find((s) => !targetSet.has(getStepId(s)));
+        const entryStep = steps.find(
+              (s) => !targetSet.has(getStepId(s))
+            );
+
+            let currentStep = entryStep;
+
+            if (
+              task.executionMode === 'partial' &&
+              typeof task.currentStep === 'number'
+            ) {
+              currentStep = steps[task.currentStep] || entryStep;
+
+              writeLog(
+                `[Replay] Resuming task from step index ${task.currentStep}`,
+                'info',
+                {
+                  workerId: WORKER_ID,
+                  taskId: task._id,
+                  workflowId: task.workflowId,
+                  traceId,
+                }
+              );
+            }
 
         function getNextEdge(stepLocal, resultLocal) {
           if (stepLocal.type === 'condition') {

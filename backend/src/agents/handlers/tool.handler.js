@@ -29,7 +29,8 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
       type: resolvedStepType,
       tool: resolvedStepType,
       output: toolResult,
-      success: true,
+      error: toolResult?.error,
+      success: !toolResult?.error,
     });
   }
 
@@ -37,6 +38,7 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
     stepId: validatedStepId,
     type: stepType,
     output: `Unknown step type: ${stepType}`,
+    error: `Unknown step type: ${stepType}`,
     success: false,
   });
 }

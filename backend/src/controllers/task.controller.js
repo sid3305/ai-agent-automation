@@ -399,6 +399,73 @@ async function resumeTask(req, res) {
     return sendError(res, 500, "server_error");
   }
 }
+// -----------------------------
+// Rerun From Failed Step
+// POST /api/tasks/:id/rerun-from-failed
+// -----------------------------
+async function rerunFromFailedStep(req, res) {
+  try {
+    const userId = req.user._id;
+    const taskId = req.params.id;
+
+    const t = await Task.findById(taskId);
+
+    if (!t) return sendError(res, 404, "not_found");
+
+    if (t.userId.toString() !== userId.toString()) {
+      return sendError(res, 403, "forbidden");
+    }
+
+    if (t.status !== "failed") {
+      return sendError(res, 400, "task_not_failed");
+    }
+
+    // Find the first failed step
+    const failedIndex = t.stepResults.findIndex(
+      (step) => step.success === false
+    );
+
+    if (failedIndex === -1) {
+      return sendError(res, 400, "failed_step_not_found");
+    }
+
+    // Copy only successful step results
+    const previousResults = t.stepResults
+      .slice(0, failedIndex)
+      .map((step) => ({
+        ...step.toObject(),
+        replayedFromTaskId: t._id,
+      }));
+
+    const newTask = await Task.create({
+      name: `${t.name} (Rerun)`,
+
+      workflowId: t.workflowId,
+      agentId: t.agentId,
+      userId: t.userId,
+
+      input: t.input,
+      metadata: t.metadata,
+      steps: t.steps,
+
+      currentStep: failedIndex,
+      status: "pending",
+
+      stepResults: previousResults,
+
+      executionMode: "partial",
+      parentTaskId: t._id,
+      graphHash: t.graphHash,
+    });
+
+    return sendOK(res, {
+      task: newTask,
+    });
+  } catch (err) {
+    console.error("rerunFromFailedStep error:", err);
+    return sendError(res, 500, "server_error");
+  }
+}
 
 module.exports = {
   createTask,
@@ -409,4 +476,5 @@ module.exports = {
   approveTask,
   rejectTask,
   resumeTask,
+  rerunFromFailedStep,
 };

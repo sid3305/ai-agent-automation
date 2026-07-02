@@ -18,8 +18,9 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
   return createStepResult({
     stepId: validatedStepId,
     type: 'mcp',
-    output: execution.result,
-    success: true,
+    output: execution?.result || execution?.error,
+    error: execution?.error,
+    success: !execution?.error,
   });
 }
 

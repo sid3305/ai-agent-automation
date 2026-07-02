@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useState, useCallback, memo, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -106,6 +106,60 @@ function getCategoryBadgeClass(category?: string) {
     default:
       return 'bg-muted text-muted-foreground border-border';
   }
+}
+
+function WorkflowDescription({ description }: { description: string }) {
+  const descriptionRef = useRef<HTMLParagraphElement | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const updateTruncationState = useCallback(() => {
+    const element = descriptionRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    setIsTruncated(element.scrollHeight > element.clientHeight + 1);
+  }, []);
+
+  useEffect(() => {
+    updateTruncationState();
+
+    const element = descriptionRef.current;
+
+    if (!element || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateTruncationState();
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [description, updateTruncationState]);
+
+  const descriptionContent = (
+    <p ref={descriptionRef} className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+      {description}
+    </p>
+  );
+
+  if (!isTruncated) {
+    return descriptionContent;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{descriptionContent}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-balance">
+        {description}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 // ---------- WorkflowCard with inline editing, double-click, and copy ID ----------
@@ -234,9 +288,7 @@ const WorkflowCard = memo(
                   </button>
                 </div>
               )}
-              {workflow.description && (
-                <p className="mt-2 text-sm text-muted-foreground">{workflow.description}</p>
-              )}
+              {workflow.description && <WorkflowDescription description={workflow.description} />}
             </div>
 
             <DropdownMenu>
