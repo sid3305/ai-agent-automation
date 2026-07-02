@@ -20,6 +20,7 @@ import {
   Database,
   ShieldCheck,
   Globe,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,15 +149,17 @@ export default function TaskDetailPage() {
   const [approvalFeedback, setApprovalFeedback] = useState("");
   const [isResuming, setIsResuming] = useState(false);
 
-  async function handleResumeTask() {
+  async function handleResumeTask(resumeStepId?: string) {
     if (!task) return;
     setIsResuming(true);
     try {
       const res = await fetch(apiUrl(`/tasks/${task._id}/resume`), {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: "Bearer " + localStorage.getItem("token"),
         },
+        body: JSON.stringify({ resumeStepId }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -364,7 +367,7 @@ export default function TaskDetailPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={handleResumeTask} 
+                    onClick={() => handleResumeTask()} 
                     disabled={isResuming}
                     className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
                   >
@@ -558,13 +561,28 @@ export default function TaskDetailPage() {
                               <div className="flex-1">
                                 <CollapsibleTrigger className="group flex w-full items-start justify-between text-left">
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-wrap">
                                       <h3 className="font-semibold">
                                         {stepMetadata?.name || step.stepId}
                                       </h3>
                                       <Badge variant="outline" className="text-xs">
                                         {step.type}
                                       </Badge>
+                                      {['failed', 'retrying', 'rejected'].includes(task.status) && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-6 px-2 text-[10px] text-primary hover:text-primary-hover flex items-center gap-1 bg-primary/5 hover:bg-primary/10 border-primary/20"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleResumeTask(step.stepId);
+                                          }}
+                                          disabled={isResuming}
+                                        >
+                                          <Play className="size-2.5" />
+                                          Resume from here
+                                        </Button>
+                                      )}
                                     </div>
 
                                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
