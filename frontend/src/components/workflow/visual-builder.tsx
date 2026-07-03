@@ -244,7 +244,7 @@ function computeNodes(
               {step.agentId && (
                 <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 rounded text-[9px] font-semibold tracking-wide">
                   <Bot className="size-2.5" />
-                  {agents.find(a => a._id === step.agentId)?.name || 'Delegated Agent'}
+                  {agents.find((a) => a._id === step.agentId)?.name || 'Delegated Agent'}
                 </div>
               )}
             </div>
@@ -739,9 +739,11 @@ export default function VisualBuilder({
   }, []);
 
   useEffect(() => {
-    getAgents().then(res => {
-      if (res.ok) setAgents(res.agents || []);
-    }).catch(console.error);
+    getAgents()
+      .then((res) => {
+        if (res.ok) setAgents(res.agents || []);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -972,7 +974,7 @@ export default function VisualBuilder({
                   <option value="Parallel">Parallel</option>
                   <option value="Join">Join</option>
                   <option value="Approval">Approval (HITL)</option>
-                  <option value="agent_call">Agent Call (A2A)</option>
+                  <option value="agent_call">Agent Task</option>
                 </optgroup>
                 <optgroup label="Integrations">
                   <option value="Tool">Tool</option>
@@ -994,14 +996,18 @@ export default function VisualBuilder({
                 <select
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background"
                   value={selectedStep.config?.agentId || selectedStep.agentId || ''}
-                  onChange={(e) => updateStep(selectedStep.id, { 
-                    agentId: e.target.value,
-                    config: { ...selectedStep.config, agentId: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    updateStep(selectedStep.id, {
+                      agentId: e.target.value,
+                      config: { ...selectedStep.config, agentId: e.target.value },
+                    })
+                  }
                 >
                   <option value="">Workflow Default Agent</option>
                   {agents.map((ag) => (
-                    <option key={ag._id} value={ag._id}>Delegate to: {ag.name}</option>
+                    <option key={ag._id} value={ag._id}>
+                      Delegate to: {ag.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1592,18 +1598,26 @@ export default function VisualBuilder({
             {selectedStep.type === 'agent_call' && (
               <>
                 <div>
-                  <label className="text-xs text-muted-foreground">Target Agent <span className="text-red-500">*</span></label>
+                  <label className="text-xs text-muted-foreground">
+                    Target Agent <span className="text-red-500">*</span>
+                  </label>
                   <select
                     className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background"
                     value={selectedStep.config?.agentId || selectedStep.agentId || ''}
-                    onChange={(e) => updateStep(selectedStep.id, { 
-                      agentId: e.target.value, 
-                      config: { ...selectedStep.config, agentId: e.target.value } 
-                    })}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        agentId: e.target.value,
+                        config: { ...selectedStep.config, agentId: e.target.value },
+                      })
+                    }
                   >
-                    <option value="" disabled>Select agent to delegate to...</option>
+                    <option value="" disabled>
+                      Select agent to delegate to...
+                    </option>
                     {agents.map((ag) => (
-                      <option key={ag._id} value={ag._id}>{ag.name}</option>
+                      <option key={ag._id} value={ag._id}>
+                        {ag.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1612,9 +1626,11 @@ export default function VisualBuilder({
                   <textarea
                     className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background min-h-[120px]"
                     value={selectedStep.config?.input || selectedStep.input || ''}
-                    onChange={(e) => updateStep(selectedStep.id, { 
-                      config: { ...selectedStep.config, input: e.target.value } 
-                    })}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        config: { ...selectedStep.config, input: e.target.value },
+                      })
+                    }
                     placeholder="Enter explicit instructions for the delegated agent..."
                   />
                 </div>
@@ -1624,19 +1640,25 @@ export default function VisualBuilder({
                     <input
                       type="checkbox"
                       checked={selectedStep.config?.waitForResponse !== false}
-                      onChange={(e) => updateStep(selectedStep.id, { 
-                        config: { ...selectedStep.config, waitForResponse: e.target.checked } 
-                      })}
+                      onChange={(e) =>
+                        updateStep(selectedStep.id, {
+                          config: { ...selectedStep.config, waitForResponse: e.target.checked },
+                        })
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between border-t border-muted pt-3">
-                    <label className="text-sm cursor-pointer select-none">Use Target Agent's Memory</label>
+                    <label className="text-sm cursor-pointer select-none">
+                      Use Target Agent&apos;s Memory
+                    </label>
                     <input
                       type="checkbox"
                       checked={selectedStep.config?.useMemory || false}
-                      onChange={(e) => updateStep(selectedStep.id, { 
-                        config: { ...selectedStep.config, useMemory: e.target.checked } 
-                      })}
+                      onChange={(e) =>
+                        updateStep(selectedStep.id, {
+                          config: { ...selectedStep.config, useMemory: e.target.checked },
+                        })
+                      }
                     />
                   </div>
                 </div>

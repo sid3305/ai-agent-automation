@@ -23,16 +23,12 @@ import {
   Play,
   RotateCcw,
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useAssistantContext } from "@/context/assistant-context";
-import { apiUrl } from "@/lib/api";
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useAssistantContext } from '@/context/assistant-context';
+import { apiUrl } from '@/lib/api';
 
 function getStepIcon(status: string) {
   switch (status) {
@@ -86,7 +82,7 @@ type RetryHistoryItem = {
 type Task = {
   _id: string;
   name: string;
-  status: "pending" | "running" | "completed" | "failed" | "pending_approval" | "rejected";
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'pending_approval' | 'rejected';
   workflowId?: string;
   agentId?: string;
   createdAt: string;
@@ -103,7 +99,7 @@ type Task = {
     stepId: string;
     requestedAt: string;
     decidedAt?: string;
-    decision?: "approved" | "rejected";
+    decision?: 'approved' | 'rejected';
     feedback?: string;
   };
 };
@@ -153,7 +149,7 @@ export default function TaskDetailPage() {
 
   const { addToast } = useToast();
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
-  const [approvalFeedback, setApprovalFeedback] = useState("");
+  const [approvalFeedback, setApprovalFeedback] = useState('');
   const [isResuming, setIsResuming] = useState(false);
   const [isRerunning, setIsRerunning] = useState(false);
 
@@ -162,29 +158,29 @@ export default function TaskDetailPage() {
     setIsResuming(true);
     try {
       const res = await fetch(apiUrl(`/tasks/${task._id}/resume`), {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
         body: JSON.stringify({ resumeStepId }),
       });
       const data = await res.json();
       if (data.ok) {
         addToast({
-          title: "Task Resumed",
-          description: "Task execution has been resumed.",
-          type: "success"
+          title: 'Task Resumed',
+          description: 'Task execution has been resumed.',
+          type: 'success',
         });
         refetch();
       } else {
-        throw new Error(data.error || "Failed to resume task");
+        throw new Error(data.error || 'Failed to resume task');
       }
     } catch (err: any) {
       addToast({
-        title: "Error",
-        description: err.message || "Failed to resume task",
-        type: "error"
+        title: 'Error',
+        description: err.message || 'Failed to resume task',
+        type: 'error',
       });
     } finally {
       setIsResuming(false);
@@ -196,73 +192,66 @@ export default function TaskDetailPage() {
     setIsRerunning(true);
 
     try {
-      const res = await fetch(
-        apiUrl(`/tasks/${task._id}/rerun-from-failed`),
-        {
-          method: "POST",
-          headers: {
-            Authorization:
-              "Bearer " + localStorage.getItem("token"),
-          },
-        }
-      );
+      const res = await fetch(apiUrl(`/tasks/${task._id}/rerun-from-failed`), {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
+        },
+      });
 
       const data = await res.json();
 
       if (data.ok) {
         addToast({
-          title: "Task Created",
-          description: "Rerunning from failed step.",
-          type: "success",
+          title: 'Task Created',
+          description: 'Rerunning from failed step.',
+          type: 'success',
         });
 
         router.push(`/tasks/${data.task._id}`);
       } else {
-        throw new Error(
-          data.error || "Failed to rerun task"
-        );
+        throw new Error(data.error || 'Failed to rerun task');
       }
     } catch (err: any) {
       addToast({
-        title: "Error",
-        description:
-          err.message || "Failed to rerun task",
-        type: "error",
+        title: 'Error',
+        description: err.message || 'Failed to rerun task',
+        type: 'error',
       });
     } finally {
       setIsRerunning(false);
     }
   }
 
-  async function handleApprovalDecision(decision: "approve" | "reject") {
+  async function handleApprovalDecision(decision: 'approve' | 'reject') {
     if (!task) return;
     setIsSubmittingApproval(true);
     try {
       const res = await fetch(apiUrl(`/tasks/${task._id}/${decision}`), {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
         body: JSON.stringify({ feedback: approvalFeedback }),
       });
       const data = await res.json();
       if (data.ok) {
         addToast({
-          title: decision === "approve" ? "Task Approved" : "Task Rejected",
+          title: decision === 'approve' ? 'Task Approved' : 'Task Rejected',
           description: `Task has been ${decision}d successfully.`,
-          type: "success"
+          type: 'success',
         });
-        setApprovalFeedback("");
+        setApprovalFeedback('');
         refetch();
       } else {
-        throw new Error(data.error || "Failed to submit decision");
+        throw new Error(data.error || 'Failed to submit decision');
       }
     } catch (err: any) {
       addToast({
-        title: "Error",
-        description: err.message || "Failed to submit approval decision",
-        type: "error"
+        title: 'Error',
+        description: err.message || 'Failed to submit approval decision',
+        type: 'error',
       });
     } finally {
       setIsSubmittingApproval(false);
@@ -317,8 +306,8 @@ export default function TaskDetailPage() {
   // Poll while running
   useEffect(() => {
     if (!task) return;
-    if (["completed", "failed", "rejected"].includes(task.status)) return;
-    if (task.status === "pending_approval") return; // Stop polling while waiting for human
+    if (['completed', 'failed', 'rejected'].includes(task.status)) return;
+    if (task.status === 'pending_approval') return; // Stop polling while waiting for human
 
     const interval = setInterval(() => {
       refetch();
@@ -360,11 +349,11 @@ export default function TaskDetailPage() {
 
       failedStep: failedStep
         ? {
-          stepId: failedStep.stepId,
-          name: failedStep.name,
-          type: failedStep.type,
-          output: failedStep.outputSummary,
-        }
+            stepId: failedStep.stepId,
+            name: failedStep.name,
+            type: failedStep.type,
+            output: failedStep.outputSummary,
+          }
         : undefined,
 
       status:
@@ -401,20 +390,20 @@ export default function TaskDetailPage() {
                 <h1 className="font-mono text-2xl font-bold">{task.name}</h1>
                 <Badge
                   className={
-                    task.status === "completed"
-                      ? "bg-success/20 text-success border-success/30"
-                      : task.status === "failed" || task.status === "rejected"
-                        ? "bg-destructive/20 text-destructive border-destructive/30"
-                        : task.status === "pending_approval"
-                          ? "bg-amber-500/20 text-amber-600 border-amber-500/30"
-                          : task.status === "running"
-                            ? "bg-warning/20 text-warning border-warning/30"
-                            : "bg-muted text-muted-foreground"
+                    task.status === 'completed'
+                      ? 'bg-success/20 text-success border-success/30'
+                      : task.status === 'failed' || task.status === 'rejected'
+                        ? 'bg-destructive/20 text-destructive border-destructive/30'
+                        : task.status === 'pending_approval'
+                          ? 'bg-amber-500/20 text-amber-600 border-amber-500/30'
+                          : task.status === 'running'
+                            ? 'bg-warning/20 text-warning border-warning/30'
+                            : 'bg-muted text-muted-foreground'
                   }
                 >
                   {task.status}
                 </Badge>
-                {["failed", "retrying", "rejected"].includes(task.status) && (
+                {['failed', 'retrying', 'rejected'].includes(task.status) && (
                   <>
                     <Button
                       variant="outline"
@@ -423,10 +412,10 @@ export default function TaskDetailPage() {
                       disabled={isResuming}
                       className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
                     >
-                      {isResuming ? "Resuming..." : "Resume Execution"}
+                      {isResuming ? 'Resuming...' : 'Resume Execution'}
                     </Button>
 
-                    {task.status === "failed" && (
+                    {task.status === 'failed' && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -435,7 +424,7 @@ export default function TaskDetailPage() {
                         className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
                       >
                         <RotateCcw className="mr-2 size-4" />
-                        {isRerunning ? "Creating..." : "Rerun from Failed"}
+                        {isRerunning ? 'Creating...' : 'Rerun from Failed'}
                       </Button>
                     )}
                   </>
@@ -486,7 +475,7 @@ export default function TaskDetailPage() {
                   </h2>
 
                   {/* HITL Approval Card */}
-                  {task.status === "pending_approval" && task.approval && (
+                  {task.status === 'pending_approval' && task.approval && (
                     <Card className="mb-6 border-amber-500/30 bg-amber-500/5 p-4">
                       <div className="flex items-start gap-4">
                         <div className="rounded-full bg-amber-500/20 p-2">
@@ -497,11 +486,13 @@ export default function TaskDetailPage() {
                             Human Approval Required
                           </h3>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            The workflow is paused at step{" "}
+                            The workflow is paused at step{' '}
                             <span className="font-mono font-bold text-foreground">
-                              {task.metadata?.steps?.find((s) => s.stepId === task.pausedAtStepId)?.name || task.pausedAtStepId}
+                              {task.metadata?.steps?.find((s) => s.stepId === task.pausedAtStepId)
+                                ?.name || task.pausedAtStepId}
                             </span>
-                            . Please review the execution up to this point and approve or reject to continue.
+                            . Please review the execution up to this point and approve or reject to
+                            continue.
                           </p>
 
                           <div className="mt-4">
@@ -518,7 +509,7 @@ export default function TaskDetailPage() {
 
                           <div className="mt-4 flex items-center gap-3">
                             <Button
-                              onClick={() => handleApprovalDecision("approve")}
+                              onClick={() => handleApprovalDecision('approve')}
                               disabled={isSubmittingApproval}
                               className="bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700"
                             >
@@ -526,7 +517,7 @@ export default function TaskDetailPage() {
                             </Button>
                             <Button
                               variant="outline"
-                              onClick={() => handleApprovalDecision("reject")}
+                              onClick={() => handleApprovalDecision('reject')}
                               disabled={isSubmittingApproval}
                               className="border-destructive/30 text-destructive hover:bg-destructive/10"
                             >
@@ -634,9 +625,12 @@ export default function TaskDetailPage() {
                                       <Badge variant="outline" className="text-xs">
                                         {step.type}
                                       </Badge>
-                                      
+
                                       {step.executedBy?.agentName && (
-                                        <Badge variant="secondary" className="text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 flex items-center gap-1.5">
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 flex items-center gap-1.5"
+                                        >
                                           <Bot className="size-3" />
                                           {step.executedBy.agentName}
                                           <span className="opacity-40 mx-0.5">|</span>
@@ -658,8 +652,6 @@ export default function TaskDetailPage() {
                                           <Play className="size-2.5" />
                                           Resume from here
                                         </Button>
-                                      )}
-                                    </div>
                                       )}
                                     </div>
 
