@@ -449,32 +449,7 @@ export default function TaskDetailPage() {
                     <Globe className="size-4 text-primary" />
                     Triggered By:
                   </span>
-                  <Badge variant="secondary" className="font-mono text-xs">
-                    Workflow API
-                  </Badge>
-                  {(task.metadata as any)?.sourceWorkflowId && (
-                    <span className="text-xs">
-                      Called from Workflow:{' '}
-                      <Link
-                        href={`/workflows/${(task.metadata as any).sourceWorkflowId}`}
-                        className="text-primary hover:underline font-mono font-semibold"
-                      >
-                        {(task.metadata as any).sourceWorkflowName ||
-                          (task.metadata as any).sourceWorkflowId}
-                      </Link>
-                    </span>
-                  )}
-                  {(task.metadata as any)?.sourceTaskId && (
-                    <span className="text-xs text-muted-foreground border-l pl-2">
-                      Task:{' '}
-                      <Link
-                        href={`/tasks/${(task.metadata as any).sourceTaskId}`}
-                        className="text-primary hover:underline font-mono"
-                      >
-                        {(task.metadata as any).sourceTaskId.slice(-6).toUpperCase()}
-                      </Link>
-                    </span>
-                  )}
+                  API Webhook
                 </div>
               )}
             </div>
