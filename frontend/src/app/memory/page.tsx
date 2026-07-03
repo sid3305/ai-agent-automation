@@ -98,7 +98,7 @@ export default function MemoryPage() {
       const data = await res.json();
       if (data.ok) setMemories(data.memories);
     } catch (error) {
-      console.error('Failed to fetch memories:', error);
+      console.warn('Failed to fetch memories:', error);
     } finally {
       setLoading(false);
     }
