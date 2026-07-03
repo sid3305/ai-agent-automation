@@ -70,7 +70,7 @@ function SidebarContent({
         className={cn(
           'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           isActive
-            ? 'bg-sidebar-accent/80 text-sidebar-foreground'
+            ? 'bg-sidebar-accent text-sidebar-foreground'
             : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
         )}
       >
@@ -78,17 +78,19 @@ function SidebarContent({
         {isActive && (
           <motion.div
             layoutId="active-nav-indicator"
-            className="absolute left-0 top-1/2 h-3/5 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+            className="absolute left-0 top-1/2 h-3/5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           />
         )}
-        
+
         <item.icon
           className={cn(
             'size-4 shrink-0 transition-colors',
-            isActive ? 'text-primary' : 'text-sidebar-foreground/60 group-hover:text-sidebar-foreground/90'
+            isActive
+              ? 'text-sidebar-foreground'
+              : 'text-sidebar-foreground/60 group-hover:text-sidebar-foreground/90'
           )}
         />
         <AnimatePresence>
@@ -113,8 +115,8 @@ function SidebarContent({
       {/* Header */}
       <div className="flex h-16 shrink-0 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 border border-primary/20">
-            <Bot className="size-4 text-primary" />
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-foreground/10 border border-sidebar-foreground/20">
+            <Bot className="size-4 text-sidebar-foreground" />
           </div>
           <AnimatePresence>
             {showLabels && (
@@ -139,16 +141,18 @@ function SidebarContent({
         <button
           onClick={onCollapse}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="hidden md:flex shrink-0 items-center justify-center rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="hidden md:flex shrink-0 items-center justify-center rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-foreground"
         >
-          <ChevronLeft className={cn('size-4 transition-transform duration-300', collapsed && 'rotate-180')} />
+          <ChevronLeft
+            className={cn('size-4 transition-transform duration-300', collapsed && 'rotate-180')}
+          />
         </button>
 
         {/* Mobile close button (using Sheet close internally, but keeping button for layout if needed, though we can hide it) */}
         <button
           onClick={onMobileClose}
           aria-label="Close sidebar"
-          className="md:hidden shrink-0 items-center justify-center rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="md:hidden shrink-0 items-center justify-center rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-foreground"
         >
           <X className="size-4" />
         </button>
@@ -156,9 +160,7 @@ function SidebarContent({
 
       {/* Nav */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none px-2 py-4 flex flex-col gap-6">
-        <nav className="flex flex-col gap-1">
-          {coreNavItems.map(renderNavItem)}
-        </nav>
+        <nav className="flex flex-col gap-1">{coreNavItems.map(renderNavItem)}</nav>
 
         <div className="flex flex-col gap-2">
           {showLabels && (
@@ -166,15 +168,13 @@ function SidebarContent({
               System
             </div>
           )}
-          <nav className="flex flex-col gap-1">
-            {systemNavItems.map(renderNavItem)}
-          </nav>
+          <nav className="flex flex-col gap-1">{systemNavItems.map(renderNavItem)}</nav>
         </div>
       </div>
 
       {/* Footer */}
       <div className="mt-auto flex flex-col gap-1 border-t border-border px-2 py-4">
-        <button className="group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <button className="group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-foreground">
           <HelpCircle className="size-4 shrink-0 text-sidebar-foreground/60 group-hover:text-sidebar-foreground/90" />
           <AnimatePresence>
             {showLabels && (
@@ -232,7 +232,7 @@ export function AppSidebar() {
         aria-label="Open sidebar"
         aria-expanded={mobileOpen}
         aria-controls="mobile-sidebar-menu"
-        className="md:hidden fixed top-4 left-4 z-40 rounded-md p-2 bg-sidebar border border-border text-sidebar-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="md:hidden fixed top-4 left-4 z-40 rounded-md p-2 bg-sidebar border border-border text-sidebar-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-foreground"
       >
         <Menu className="size-5" />
       </button>
