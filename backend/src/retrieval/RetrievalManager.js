@@ -2,19 +2,27 @@ class RetrievalManager {
   constructor(strategyRegistry) {
     this.strategyRegistry = strategyRegistry;
   }
-
+  selectStrategy(agent, userId, documentIds, query) {
+        // Placeholder for future intelligent strategy selection.
+        return "hybrid";
+    }
   async retrieve(agent, userId, documentIds, query, topK = 3) {
-    // PR1 always uses the existing hybrid retrieval strategy.
-    const strategy = this.strategyRegistry.get("hybrid");
+    const strategyName = this.selectStrategy(
+            agent,
+            userId,
+            documentIds,
+            query
+        );
 
-    return strategy.retrieve(
-      agent,
-      userId,
-      documentIds,
-      query,
-      topK
-    );
-  }
+        const strategy = this.strategyRegistry.get(strategyName);
+
+        return strategy.retrieve(
+            agent,
+            userId,
+            documentIds,
+            query,
+            topK
+        );
+    }
 }
-
 module.exports = RetrievalManager;
