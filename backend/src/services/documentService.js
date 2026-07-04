@@ -1,4 +1,6 @@
 const Document = require('../models/document.model');
+const DocumentChunk = require('../models/documentChunk.model');
+const { runEmbedding } = require('../agents/embeddingAdapter');
 const retrievalManager = require("../retrieval");
 
 const STALE_PROCESSING_THRESHOLD_MS = 10 * 60 * 1000;
