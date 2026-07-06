@@ -102,6 +102,9 @@ export default function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
 
+  // Keep track of document statuses to trigger toast notifications on status transitions
+  const [prevDocStatuses, setPrevDocStatuses] = useState<Record<string, string>>({});
+
   const fetchDocuments = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) {
@@ -122,7 +125,35 @@ export default function DocumentsPage() {
         throw new Error(data.error || "Could not load documents.");
       }
 
-      setDocuments(data.documents || []);
+      const newDocs: Document[] = data.documents || [];
+      setDocuments(newDocs);
+
+      // Check transitions to trigger toast notifications
+      newDocs.forEach((doc) => {
+        const prevStatus = prevDocStatuses[doc._id];
+        if (prevStatus === "processing") {
+          if (doc.status === "ready") {
+            addToast({
+              type: "success",
+              title: `"${doc.title}" processed`,
+              description: "Document uploaded and indexed successfully.",
+            });
+          } else if (doc.status === "failed") {
+            addToast({
+              type: "error",
+              title: "Processing failed",
+              description: doc.processingError || `Failed to process "${doc.title}".`,
+            });
+          }
+        }
+      });
+
+      // Update stored statuses
+      const nextStatuses: Record<string, string> = {};
+      newDocs.forEach((doc) => {
+        nextStatuses[doc._id] = doc.status || "processing";
+      });
+      setPrevDocStatuses(nextStatuses);
     } catch {
       setDocumentsError(
         "Could not load documents. Make sure the backend server is running."
@@ -132,11 +163,11 @@ export default function DocumentsPage() {
         setDocumentsLoading(false);
       }
     }
-  }, []);
+  }, [prevDocStatuses, addToast]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+  }, []);
 
   useEffect(() => {
     const hasProcessingDocuments = documents.some(
@@ -147,7 +178,7 @@ export default function DocumentsPage() {
 
     const intervalId = window.setInterval(() => {
       fetchDocuments(false);
-    }, 4000);
+    }, 2000); // Poll every 2 seconds when processing documents
 
     return () => window.clearInterval(intervalId);
   }, [documents, fetchDocuments]);
