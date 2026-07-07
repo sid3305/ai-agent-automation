@@ -30,27 +30,29 @@ export function UserProfileMenu({ collapsed = false }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex w-full items-center justify-start gap-3 px-3 py-2"
+        <button
+          className="group flex w-full items-center justify-start gap-3 rounded-md px-3 py-2.5 h-auto hover:bg-sidebar-accent/40 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           disabled={!user}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
             {(user?.name || user?.email || "U")[0].toUpperCase()}
           </div>
 
           {/* Hide text when collapsed */}
           {!collapsed && (
-            <div className="flex flex-col items-start text-sm">
-              <span className="font-medium">
-                {user?.name || "User"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {user?.email || ""}
-              </span>
-            </div>
+            <>
+              <div className="flex flex-col items-start text-sm overflow-hidden text-ellipsis whitespace-nowrap flex-1">
+                <span className="font-medium text-sidebar-foreground truncate w-full text-left">
+                  {user?.name || "User"}
+                </span>
+                <span className="text-[11px] text-muted-foreground truncate w-full text-left">
+                  Pro Plan
+                </span>
+              </div>
+              <Settings className="size-4 shrink-0 text-muted-foreground group-hover:text-sidebar-foreground transition-colors duration-200" />
+            </>
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
 
       {/* Menu only opens if user exists */}

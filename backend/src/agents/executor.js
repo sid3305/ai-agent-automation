@@ -113,7 +113,7 @@ async function executeStep(step, context = {}, agent = null) {
         timestamp: new Date(),
         input: isTimeout ? '[timeout]' : '[error]',
         output: normalizedError.message,
-        error: err.stack ? String(err.stack).slice(0, 2000) : undefined,
+        error: err?.stack ? String(err.stack).slice(0, 2000) : undefined,
         errorMetadata: {
           code: normalizedError.code,
           name: normalizedError.name,

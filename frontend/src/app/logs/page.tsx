@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+
 import { Card } from "@/components/ui/card";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -184,15 +185,8 @@ export default function LogsPage() {
     search || (level && level !== "all") || workflowId || taskId || startDate || endDate;
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">System Logs</h1>
@@ -373,9 +367,8 @@ export default function LogsPage() {
                 </div>
               </div>
             </Card>
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+          
+      </>
+    </AuthenticatedLayout>
   );
 }

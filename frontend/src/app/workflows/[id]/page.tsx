@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
+
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -144,15 +145,20 @@ function getTypeColor(type: string) {
  * Finds the node definition by type and returns the first non-empty field values.
  * Falls back gracefully for types not yet loaded.
  */
-function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[] = []): string {
+function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[] = [], agentMap: Record<string, string> = {}): string {
   const lowerType = (step.type || '').toLowerCase();
   const def = nodeDefinitions.find((d) => d.id.toLowerCase() === lowerType);
 
   if (def && def.fields.length > 0) {
     const parts: string[] = [];
     for (const field of def.fields) {
-      const val = step.config?.[field.name] ?? (step as any)[field.name];
+      let val = step.config?.[field.name] ?? (step as any)[field.name];
+      
       if (val !== undefined && val !== null && String(val).trim() !== '') {
+        if ((field.name === 'agentId' || field.label.includes('Agent')) && agentMap[val as string]) {
+          val = agentMap[val as string];
+        }
+
         const display = String(val).slice(0, 160);
         parts.push(
           `${field.label}: ${display}${display.length < String(val).length ? '\u2026' : ''}`
@@ -169,6 +175,10 @@ function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[
   if (config.prompt || anyStep.prompt) return (config.prompt || anyStep.prompt).slice(0, 160);
   if (config.url && config.method) return `${config.method} ${config.url}`;
   if (config.seconds) return `Wait for ${config.seconds} seconds`;
+  
+  if (lowerType === 'agent_call') {
+    return config.agentId ? 'Delegated' : 'Target agent not set';
+  }
 
   return 'No configuration';
 }
@@ -298,7 +308,7 @@ export default function WorkflowDetailPage() {
       stepId: step.stepId,
       stepName: step.name ?? 'Unnamed step',
       stepType: step.type,
-      stepDescription: getStepDescription(step, nodeDefinitions),
+      stepDescription: getStepDescription(step, nodeDefinitions, agentMap),
     });
   }
 
@@ -408,14 +418,8 @@ export default function WorkflowDetailPage() {
   if (!workflow) return <p>Workflow not found.</p>;
 
   return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-      <main
-        className="flex-1 transition-[padding] duration-300"
-        style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-      >
-        <div className="p-8">
-          <div className="mb-8 flex items-center justify-between">
+    <AuthenticatedLayout>
+      <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">{workflow.name}</h1>
               <p className="mt-2 text-muted-foreground">Workflow pipeline visualization</p>
@@ -535,7 +539,7 @@ export default function WorkflowDetailPage() {
                           </div>
 
                           <p className="text-sm text-muted-foreground line-clamp-3">
-                            {getStepDescription(step, nodeDefinitions)}
+                            {getStepDescription(step, nodeDefinitions, agentMap)}
                           </p>
                         </div>
                       </div>
@@ -565,9 +569,7 @@ export default function WorkflowDetailPage() {
             onOpenChange={setApiSettingsOpen}
             onSaveSuccess={fetchWorkflow}
           />
-        </div>
-      </main>
-    </div>
+    </AuthenticatedLayout>
   );
 }
 
@@ -600,18 +602,20 @@ function TaskItem({ taskId }: { taskId: string }) {
   }, [taskId]);
 
   if (!task) {
-    return <div className="loading loading-sm"></div>;
+    return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary m-4"></div>;
   }
 
   return (
-    <div className="card bg-base-200 shadow p-4">
+    <Card className="p-4 shadow-sm flex flex-col gap-1 items-start">
       <h3 className="text-lg font-semibold">{task.name}</h3>
-      <p className="text-sm opacity-70">Status: {task.status}</p>
+      <p className="text-sm text-muted-foreground">Status: {task.status}</p>
 
-      <a href={`/dashboard/tasks/${task._id}`} className="btn btn-sm btn-primary mt-3">
-        View Task
-      </a>
-    </div>
+      <Button size="sm" asChild className="mt-3">
+        <a href={`/dashboard/tasks/${task._id}`}>
+          View Task
+        </a>
+      </Button>
+    </Card>
   );
 }
 
@@ -645,30 +649,30 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
   }
 
   return (
-    <dialog id="createWorkflowTaskModal" className="modal">
-      <div className="modal-box">
+    <dialog id="createWorkflowTaskModal" className="bg-background text-foreground rounded-lg shadow-lg border border-border p-6 max-w-lg w-full backdrop:bg-black/80">
+      <div className="w-full">
         <h3 className="font-bold text-lg">Create Task</h3>
 
-        <form className="space-y-3 mt-4" onSubmit={createTask}>
+        <form className="space-y-4 mt-4" onSubmit={createTask}>
           <input
             type="text"
             name="name"
-            className="input input-bordered w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Task name"
             required
           />
 
           <textarea
             name="text"
-            className="textarea textarea-bordered w-full"
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Task input text (for LLM)"
             required
           />
 
-          <div className="modal-action">
-            <button
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
               onClick={() =>
                 (
                   document.getElementById('createWorkflowTaskModal') as HTMLDialogElement | null
@@ -676,11 +680,11 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
               }
             >
               Cancel
-            </button>
+            </Button>
 
-            <button type="submit" className="btn btn-primary">
+            <Button type="submit">
               Create
-            </button>
+            </Button>
           </div>
         </form>
       </div>

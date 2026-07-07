@@ -8,6 +8,8 @@ const logRoutes = require('./routes/log.routes');
 const scheduleRoutes = require('./routes/schedule.routes');
 const webhookRoutes = require('./routes/webhook.routes'); // admin
 const webhookPublicRoutes = require('./routes/webhook.public.routes'); // public
+const a2aPublicRoutes = require('./routes/a2a.public.routes');
+const agentTeamRoutes = require('./routes/agentTeam.routes');
 const documentRoutes = require('./routes/document.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const settingsRoutes = require('./routes/settings.routes');
@@ -21,6 +23,7 @@ const mcpRoutes = require('./routes/mcp.routes');
 const apiKeyRoutes = require('./routes/apiKey.routes');
 const workflowPublicRoutes = require('./routes/workflow.public.routes');
 const { globalLimiter, webhookLimiter } = require('./middleware/rateLimit.middleware');
+const helmetMiddleware = require('./middleware/helmet.middleware.js');
 require('dotenv').config();
 
 const app = express();
@@ -28,6 +31,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors());
+app.use(helmetMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -45,8 +49,10 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/agent-teams', agentTeamRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/webhook/a2a', a2aPublicRoutes);
 app.use('/webhook', webhookPublicRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/logs', logRoutes);

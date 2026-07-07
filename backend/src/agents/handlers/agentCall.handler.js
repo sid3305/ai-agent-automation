@@ -8,52 +8,40 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
   const inputPayload = interpolate(config.input || '', context);
   const waitForResponse = config.waitForResponse !== false;
 
-  let systemBlock = `You are ${agent?.name || 'a specialized AI agent'}.`;
-  if (agent?.role) systemBlock += ` Your role is ${agent.role}.`;
-  if (agent?.objective) systemBlock += `\nObjective: ${agent.objective}`;
-  if (agent?.systemInstructions) systemBlock += `\nStrict Instructions:\n${agent.systemInstructions}`;
+  let finalPrompt = `You are ${agent?.name || 'a specialized AI agent'}.`;
+  if (agent?.role) finalPrompt += ` Your role is ${agent.role}.`;
+  if (agent?.objective) finalPrompt += `\nObjective: ${agent.objective}`;
+  if (agent?.systemInstructions) finalPrompt += `\nStrict Instructions:\n${agent.systemInstructions}`;
 
-  systemBlock += `\n\nCOMMUNICATION PROTOCOL:
-You must respond ONLY with a valid JSON object matching this exact schema:
+  let memoryMetrics = null;
+  if (config.useMemory && agent) {
+    const memories = await retrieveMemory(agent, inputPayload, config.memoryTopK || 5);
+    memoryMetrics = { useMemory: true, retrievedMemoriesCount: memories.length };
+    if (memories.length > 0) {
+      const memoryText = memories.map((m, i) => {
+        try {
+          const parsed = JSON.parse(m.content);
+          return `Memory ${i + 1}:\nUser: ${parsed.user}\nAssistant: ${parsed.assistant}`;
+        } catch {
+          return m.content;
+        }
+      }).join('\n\n').slice(0, 4000);
+      finalPrompt += `\n\nMEMORY:\n${memoryText}`;
+    }
+  }
+
+  finalPrompt += `\n\nUSER REQUEST:\n${inputPayload}`;
+  
+  finalPrompt += `\n\nCRITICAL OUTPUT FORMAT:
+You are an automated microservice. You must respond ONLY with a raw, valid JSON object. Do not include markdown fences, greetings, or conversational text. Use this exact schema:
 {
   "from": "${agent?.name || 'agent'}",
   "to": "calling_workflow",
   "type": "agent_result",
   "content": {
-    "result": "your detailed response here"
+    "result": "your calculated answer and explanation here"
   }
-}
-Do not include markdown formatting like \`\`\`json.`;
-
-  let finalPrompt = `SYSTEM INSTRUCTION:\n${systemBlock}\n\n`;
-  let memoryMetrics = null;
-
-  if (config.useMemory && agent) {
-    const memories = await retrieveMemory(agent, inputPayload, config.memoryTopK || 5);
-    
-    memoryMetrics = {
-      useMemory: true,
-      retrievedMemoriesCount: memories.length,
-    };
-
-    if (memories.length > 0) {
-      const memoryText = memories
-        .map((m, i) => {
-          try {
-            const parsed = JSON.parse(m.content);
-            return `Memory ${i + 1}:\nUser: ${parsed.user}\nAssistant: ${parsed.assistant}`;
-          } catch {
-            return m.content;
-          }
-        })
-        .join('\n\n')
-        .slice(0, 4000);
-
-      finalPrompt += `MEMORY:\n${memoryText}\n\n`;
-    }
-  }
-
-  finalPrompt += `USER REQUEST:\n${inputPayload}`;
+}`;
 
   if (!waitForResponse) {
     return createStepResult({
@@ -135,8 +123,7 @@ Do not include markdown formatting like \`\`\`json.`;
     stepId: validatedStepId,
     type: 'agent_call',
     input: inputPayload,
-    output: parsedOutput.content.result,
-    fullResponse: parsedOutput,
+    output: parsedOutput,
     raw: llmRes?.raw,
     success: true,
     metrics: memoryMetrics,

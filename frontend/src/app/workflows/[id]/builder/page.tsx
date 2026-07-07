@@ -1,11 +1,10 @@
-﻿'use client';
+'use client';
 
 import { validateGraph } from '@/utils/graphValidation';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { Card } from '@/components/ui/card';
-import { AuthGuard } from '@/components/auth/auth-guard';
 import { useAssistantContext } from '@/context/assistant-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -564,25 +563,17 @@ export default function WorkflowBuilderPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main className="flex-1 pl-64 p-8">
+      <AuthenticatedLayout layout="full">
+        <div className="p-8">
           <p className="opacity-70">Loading workflow builder…</p>
-        </main>
-      </div>
+        </div>
+      </AuthenticatedLayout>
     );
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout layout="full">
+      <div className="p-8">
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
               <div>
@@ -866,9 +857,7 @@ export default function WorkflowBuilderPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }
 

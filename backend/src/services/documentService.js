@@ -1,6 +1,5 @@
 const Document = require('../models/document.model');
 const DocumentChunk = require("../models/documentChunk.model");
-
 const { runEmbedding } = require("../agents/embeddingAdapter");
 const retrievalManager = require("../retrieval");
 const documentAnalyzer = require("../retrieval/analyzers/DocumentAnalyzer");

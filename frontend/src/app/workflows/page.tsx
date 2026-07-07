@@ -4,8 +4,9 @@ import type { FormEvent } from 'react';
 import { useEffect, useState, useCallback, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
+import { FilterBar } from '@/components/layout/filter-bar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,7 +34,7 @@ import { useAssistantContext } from '@/context/assistant-context';
 import { useToast } from '@/hooks/use-toast';
 import { apiUrl } from '@/lib/api';
 import type { WorkflowPayload as Workflow, WorkflowAgent as Agent } from '@/types/workflow';
-import { Bot, Check, ChevronDown, Copy, MoreVertical, Plus, Pencil } from 'lucide-react';
+import { Bot, Check, ChevronDown, Copy, MoreVertical, Plus, Pencil, Search } from 'lucide-react';
 
 // ─── Filter Utilities ──────────────────────────────────────────────
 function useDebounce<T>(value: T, delay = 300): T {
@@ -589,14 +590,8 @@ export default function WorkflowsPage() {
     router.replace(`${pathname}?${params.toString()}`);
   }
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-8 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">Workflows</h1>
@@ -638,55 +633,46 @@ export default function WorkflowsPage() {
             ) : (
               <div className="space-y-6">
                 {/* ─── Control Toolbar ─── */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <div className="relative flex-1">
-                    <svg
-                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+                <FilterBar
+                  search={
+                    <div className="relative w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder="Search workflows..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        className="pl-9 bg-background/50 border-border/40 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-primary transition-colors h-10 w-full"
                       />
-                    </svg>
-                    <Input
-                      type="text"
-                      placeholder="Search workflows..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      className="pl-9 bg-background"
-                    />
-                  </div>
-
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 capitalize"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s === 'all' ? 'All statuses' : s}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    {SORT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    </div>
+                  }
+                  filters={
+                    <>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        className="h-10 rounded-md border border-input/40 bg-background/50 px-3 py-1 text-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-2 capitalize transition-colors"
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s === 'all' ? 'All statuses' : s}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="h-10 rounded-md border border-input/40 bg-background/50 px-3 py-1 text-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-2 transition-colors"
+                      >
+                        {SORT_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  }
+                />
 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>
@@ -701,15 +687,27 @@ export default function WorkflowsPage() {
 
                 {/* ─── Filtered Grid or Empty State ─── */}
                 {filteredWorkflows.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
-                    <p className="text-sm font-medium">No workflows found</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Try adjusting your search or filters.
-                    </p>
-                    <Button variant="ghost" size="sm" className="mt-4" onClick={clearFilters}>
-                      Clear filters
-                    </Button>
-                  </div>
+                  <EmptyState
+                    icon={Search}
+                    title="No workflows found"
+                    description={
+                      hasActiveFilters 
+                        ? "Try adjusting your search or filters to find what you're looking for."
+                        : "You haven't created any workflows yet. Get started by creating your first automation."
+                    }
+                    primaryAction={
+                      hasActiveFilters ? (
+                        <Button variant="secondary" onClick={clearFilters}>
+                          Clear filters
+                        </Button>
+                      ) : (
+                        <Button onClick={() => setOpen('blank')}>
+                          <Plus className="mr-2 size-4" />
+                          Create Workflow
+                        </Button>
+                      )
+                    }
+                  />
                 ) : (
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredWorkflows.map((workflow) => (
@@ -729,9 +727,6 @@ export default function WorkflowsPage() {
                 )}
               </div>
             )}
-          </div>
-        </main>
-
         <CreateWorkflowModal
           mode={open}
           onOpenChange={() => setOpen(false)}
@@ -747,8 +742,8 @@ export default function WorkflowsPage() {
           close={() => setWorkflowToDelete(null)}
           refresh={fetchWorkflows}
         />
-      </div>
-    </AuthGuard>
+      </>
+    </AuthenticatedLayout>
   );
 }
 

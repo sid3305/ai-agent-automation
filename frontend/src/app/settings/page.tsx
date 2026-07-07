@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
+
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+
 import { useTheme } from 'next-themes';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -610,19 +611,8 @@ export default function SettingsPage() {
   if (loading) return <p className="p-8">Loading…</p>;
 
   return (
-    <AuthGuard>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="flex min-h-screen">
-          <AppSidebar />
-          <main
-            className="flex-1 transition-[padding] duration-300"
-            style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-          >
-            <div className="p-8">
+    <AuthenticatedLayout>
+      <>
               <h1 className="text-3xl font-bold mb-2">Settings</h1>
               <p className="mb-8 text-muted-foreground">Manage your system preferences</p>
 
@@ -1432,10 +1422,7 @@ export default function SettingsPage() {
                   </Card>
                 </motion.div>
               </div>
-            </div>
-          </main>
-        </div>
-      </motion.div>
-    </AuthGuard>
+      </>
+    </AuthenticatedLayout>
   );
 }

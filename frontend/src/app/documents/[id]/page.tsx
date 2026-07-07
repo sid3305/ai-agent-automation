@@ -2,8 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -116,15 +115,8 @@ export default function DocumentChatPage() {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <AppSidebar />
-
-        <main
-          className="flex-1 flex flex-col"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-        >
-          <div className="flex flex-col h-screen p-6">
+    <AuthenticatedLayout layout="full">
+      <div className="flex flex-col h-screen p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -262,8 +254,6 @@ export default function DocumentChatPage() {
               </div>
             </Card>
           </div>
-        </main>
-      </div>
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Bug } from "lucide-react";
+import { Bug, LifeBuoy } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ type IssueFormValues = {
   context: string;
 };
 
-export function ReportIssueDialog() {
+export function ReportIssueDialog({ collapsed = false }: { collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
 
   const form = useForm<IssueFormValues>({
@@ -152,14 +153,25 @@ OS: ${os}
 
   return (
     <>
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+      <button
+        className="group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         onClick={() => setOpen(true)}
       >
-        <Bug className="mr-2 size-4" />
-        Report Issue
-      </Button>
+        <LifeBuoy className="size-4 shrink-0 text-sidebar-foreground/60 group-hover:text-sidebar-foreground/90" />
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.15 }}
+              className="whitespace-nowrap"
+            >
+              Support
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
+
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Trash2, SearchX, Inbox } from 'lucide-react';
@@ -186,14 +187,8 @@ export default function TasksPage() {
   }, [page, totalPages, filteredTasks.length]);
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-8">
               <h1 className="text-3xl font-bold">Task Executions</h1>
               <p className="mt-2 text-muted-foreground">
@@ -420,9 +415,8 @@ export default function TasksPage() {
                 </Card>
               </>
             )}
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+          
+      </>
+    </AuthenticatedLayout>
   );
 }

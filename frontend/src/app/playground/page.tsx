@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import { apiUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -137,14 +136,7 @@ function PlaygroundInner() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-
-      <main
-        className="flex-1 transition-[padding] duration-300"
-        style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-      >
-        <div className="p-8 max-w-5xl">
+    <>
 
           {/* Header */}
           <div className="mb-8">
@@ -367,16 +359,14 @@ function PlaygroundInner() {
               )}
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+    </>
   );
 }
 
 export default function PlaygroundPage() {
   return (
-    <AuthGuard>
+    <AuthenticatedLayout>
       <PlaygroundInner />
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }

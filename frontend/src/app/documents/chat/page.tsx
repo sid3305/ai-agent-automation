@@ -19,8 +19,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { AppSidebar } from '@/components/app-sidebar';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -340,15 +339,8 @@ function MultiDocumentChatContent() {
 
   if (!selectedDocumentIds.length) {
     return (
-      <AuthGuard>
-        <div className="flex min-h-screen bg-background">
-          <AppSidebar />
-
-          <main
-            className="flex-1 transition-[padding] duration-300"
-            style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-          >
-            <div className="flex min-h-screen items-center justify-center p-6">
+      <AuthenticatedLayout layout="full">
+        <div className="flex min-h-screen items-center justify-center p-6">
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -369,22 +361,13 @@ function MultiDocumentChatContent() {
                 </EmptyContent>
               </Empty>
             </div>
-          </main>
-        </div>
-      </AuthGuard>
+      </AuthenticatedLayout>
     );
   }
 
   return (
-    <AuthGuard>
-      <div className="flex h-screen bg-background overflow-hidden">
-        <AppSidebar />
-
-        <main
-          className="flex-1 flex flex-col h-screen overflow-hidden transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="flex flex-col h-full gap-5 p-6 overflow-hidden">
+    <AuthenticatedLayout layout="full">
+      <div className="flex flex-col h-full gap-5 p-6 overflow-hidden">
             <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-2">
                 <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit gap-2">
@@ -732,10 +715,8 @@ function MultiDocumentChatContent() {
                 </div>
               </Card>
             </div>
-          </div>
-        </main>
       </div>
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }
 

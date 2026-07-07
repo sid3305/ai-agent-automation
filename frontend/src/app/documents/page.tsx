@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +101,9 @@ export default function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
 
+  // Keep track of document statuses to trigger toast notifications on status transitions
+  const [prevDocStatuses, setPrevDocStatuses] = useState<Record<string, string>>({});
+
   const fetchDocuments = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) {
@@ -122,7 +124,35 @@ export default function DocumentsPage() {
         throw new Error(data.error || "Could not load documents.");
       }
 
-      setDocuments(data.documents || []);
+      const newDocs: Document[] = data.documents || [];
+      setDocuments(newDocs);
+
+      // Check transitions to trigger toast notifications
+      newDocs.forEach((doc) => {
+        const prevStatus = prevDocStatuses[doc._id];
+        if (prevStatus === "processing") {
+          if (doc.status === "ready") {
+            addToast({
+              type: "success",
+              title: `"${doc.title}" processed`,
+              description: "Document uploaded and indexed successfully.",
+            });
+          } else if (doc.status === "failed") {
+            addToast({
+              type: "error",
+              title: "Processing failed",
+              description: doc.processingError || `Failed to process "${doc.title}".`,
+            });
+          }
+        }
+      });
+
+      // Update stored statuses
+      const nextStatuses: Record<string, string> = {};
+      newDocs.forEach((doc) => {
+        nextStatuses[doc._id] = doc.status || "processing";
+      });
+      setPrevDocStatuses(nextStatuses);
     } catch {
       setDocumentsError(
         "Could not load documents. Make sure the backend server is running."
@@ -132,11 +162,11 @@ export default function DocumentsPage() {
         setDocumentsLoading(false);
       }
     }
-  }, []);
+  }, [prevDocStatuses, addToast]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+  }, []);
 
   useEffect(() => {
     const hasProcessingDocuments = documents.some(
@@ -147,7 +177,7 @@ export default function DocumentsPage() {
 
     const intervalId = window.setInterval(() => {
       fetchDocuments(false);
-    }, 4000);
+    }, 2000); // Poll every 2 seconds when processing documents
 
     return () => window.clearInterval(intervalId);
   }, [documents, fetchDocuments]);
@@ -269,15 +299,7 @@ export default function DocumentsPage() {
   );
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-        >
-          <div className="p-8 max-w-6xl mx-auto">
+    <AuthenticatedLayout>
             <div className="mb-8 flex flex-col gap-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -585,9 +607,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
             )}
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }

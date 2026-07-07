@@ -14,7 +14,9 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { apiUrl } from '@/lib/api';
 import { generateNodeId, generateEdgeId } from '@/utils/ids';
 import { duplicateNodesSafely } from '@/utils/graphValidation';
-import { X, AlertTriangle, RefreshCw } from 'lucide-react';
+import { X, AlertTriangle, RefreshCw, Bot } from 'lucide-react';
+import { getAgents } from '@/lib/api';
+import type { WorkflowAgent } from '@/types/workflow';
 import { useParams } from 'next/navigation';
 import ReplayDialog from './replay-dialog';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
@@ -62,6 +64,8 @@ function getNodeColor(type: string) {
       return '#8b5cf6'; // violet
     case 'Approval':
       return '#ef4444'; // red
+    case 'agent_call':
+      return '#f43f5e'; // rose
     default:
       return '#374151';
   }
@@ -164,6 +168,11 @@ function buildNodePreview(
     rows.push({ name: 'message', type: 'string' });
   }
 
+  if (step.type === 'agent_call' && !nodeDef) {
+    rows.push({ name: 'agentId', type: step.agentId ? 'Assigned' : 'Unset' });
+    rows.push({ name: 'waitForResponse', type: step.waitForResponse !== false ? 'true' : 'false' });
+  }
+
   return rows;
 }
 
@@ -171,7 +180,8 @@ function computeNodes(
   steps: WorkflowNode[],
   flowEdges: WorkflowEdge[],
   invalidNodeIds: Set<string> = new Set(),
-  nodeDefinitions?: NodeDefinition[]
+  nodeDefinitions?: NodeDefinition[],
+  agents: WorkflowAgent[] = []
 ): StepNode[] {
   if (!steps?.length) return [];
 
@@ -229,7 +239,15 @@ function computeNodes(
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground mb-2">{step.type}</div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="text-xs text-muted-foreground">{step.type}</div>
+              {step.agentId && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 rounded text-[9px] font-semibold tracking-wide">
+                  <Bot className="size-2.5" />
+                  {agents.find((a) => a._id === step.agentId)?.name || 'Delegated Agent'}
+                </div>
+              )}
+            </div>
 
             <div className="space-y-1">
               {schema.map((row) => (
@@ -293,6 +311,7 @@ export default function VisualBuilder({
   const futureRef = useRef<{ steps: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
   const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
+  const [agents, setAgents] = useState<WorkflowAgent[]>([]);
   const [flowEdges, setFlowEdges] = useState<Edge[]>(() => (edges as unknown as Edge[]) || []);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
   const selectedMcpTool = mcpTools.find(
@@ -325,9 +344,10 @@ export default function VisualBuilder({
       steps,
       flowEdges as unknown as WorkflowEdge[],
       nodesWithErrorsSet,
-      nodeDefinitions
+      nodeDefinitions,
+      agents
     );
-  }, [steps, flowEdges, invalidNodeIds]);
+  }, [steps, flowEdges, invalidNodeIds, agents]);
 
   const [nodes, setNodes, _onNodesChange] = useNodesState(computedNodes);
 
@@ -719,6 +739,14 @@ export default function VisualBuilder({
   }, []);
 
   useEffect(() => {
+    getAgents()
+      .then((res) => {
+        if (res.ok) setAgents(res.agents || []);
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
     async function fetchMcpTools() {
       try {
         const res = await fetch(apiUrl('/mcp/tools'), {
@@ -946,6 +974,7 @@ export default function VisualBuilder({
                   <option value="Parallel">Parallel</option>
                   <option value="Join">Join</option>
                   <option value="Approval">Approval (HITL)</option>
+                  <option value="agent_call">Agent Task</option>
                 </optgroup>
                 <optgroup label="Integrations">
                   <option value="Tool">Tool</option>
@@ -957,6 +986,32 @@ export default function VisualBuilder({
                 </optgroup>
               </select>
             </div>
+
+            {selectedStep.type !== 'agent_call' && (
+              <div>
+                <label className="text-xs text-muted-foreground flex items-center justify-between">
+                  <span>Step-Level Agent Override</span>
+                  <span className="text-[10px] opacity-60">Optional</span>
+                </label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background"
+                  value={selectedStep.config?.agentId || selectedStep.agentId || ''}
+                  onChange={(e) =>
+                    updateStep(selectedStep.id, {
+                      agentId: e.target.value,
+                      config: { ...selectedStep.config, agentId: e.target.value },
+                    })
+                  }
+                >
+                  <option value="">Workflow Default Agent</option>
+                  {agents.map((ag) => (
+                    <option key={ag._id} value={ag._id}>
+                      Delegate to: {ag.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {selectedStep.type === 'Parallel' && (
               <>
@@ -1538,6 +1593,76 @@ export default function VisualBuilder({
                   pending task.
                 </p>
               </div>
+            )}
+
+            {selectedStep.type === 'agent_call' && (
+              <>
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Target Agent <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background"
+                    value={selectedStep.config?.agentId || selectedStep.agentId || ''}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        agentId: e.target.value,
+                        config: { ...selectedStep.config, agentId: e.target.value },
+                      })
+                    }
+                  >
+                    <option value="" disabled>
+                      Select agent to delegate to...
+                    </option>
+                    {agents.map((ag) => (
+                      <option key={ag._id} value={ag._id}>
+                        {ag.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Input / Prompt</label>
+                  <textarea
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1 bg-background min-h-[120px]"
+                    value={selectedStep.config?.input || selectedStep.input || ''}
+                    onChange={(e) =>
+                      updateStep(selectedStep.id, {
+                        config: { ...selectedStep.config, input: e.target.value },
+                      })
+                    }
+                    placeholder="Enter explicit instructions for the delegated agent..."
+                  />
+                </div>
+                <div className="rounded-lg border border-muted p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm cursor-pointer select-none">Wait for Response</label>
+                    <input
+                      type="checkbox"
+                      checked={selectedStep.config?.waitForResponse !== false}
+                      onChange={(e) =>
+                        updateStep(selectedStep.id, {
+                          config: { ...selectedStep.config, waitForResponse: e.target.checked },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-muted pt-3">
+                    <label className="text-sm cursor-pointer select-none">
+                      Use Target Agent&apos;s Memory
+                    </label>
+                    <input
+                      type="checkbox"
+                      checked={selectedStep.config?.useMemory || false}
+                      onChange={(e) =>
+                        updateStep(selectedStep.id, {
+                          config: { ...selectedStep.config, useMemory: e.target.checked },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { apiUrl } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -112,15 +111,8 @@ export default function MemoryPage() {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width,256px)" }}
-        >
-          <div className="p-8 max-w-6xl mx-auto">
+    <AuthenticatedLayout>
+      <>
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
               <div>
@@ -296,8 +288,6 @@ export default function MemoryPage() {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
-        </main>
 
         <Sheet open={inspectorOpen} onOpenChange={setInspectorOpen}>
           <SheetContent className="w-[min(720px,90vw)] p-0 h-screen flex flex-col">
@@ -522,7 +512,7 @@ export default function MemoryPage() {
             )}
           </SheetContent>
         </Sheet>
-      </div>
-    </AuthGuard>
+      </>
+    </AuthenticatedLayout>
   );
 }

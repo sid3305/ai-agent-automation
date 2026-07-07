@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
+
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ScheduleTable from "@/components/schedules/ScheduleTable";
@@ -58,15 +59,8 @@ export default function SchedulesPage() {
   }, [loading, schedules.length]);
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">Schedules</h1>
@@ -85,9 +79,8 @@ export default function SchedulesPage() {
                 onChange={fetchSchedules}
               />
             </Card>
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+          
+      </>
+    </AuthenticatedLayout>
   );
 }

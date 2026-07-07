@@ -23,7 +23,7 @@ connectDB().then(async () => {
     console.error("Stale document processing cleanup failed:", err);
   }
 
-  app.listen(PORT, "0.0.0.0", async () => {
+  app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 
     try {
