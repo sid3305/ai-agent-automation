@@ -1,6 +1,7 @@
 const AgentTeam = require('../models/agentTeam.model');
 const AgentSession = require('../models/agentSession.model');
 const MessageLog = require('../models/messageLog.model');
+const eventBroker = require('../agents/eventBroker');
 
 async function receiveAgentMessage(req, res) {
   try {
@@ -39,6 +40,8 @@ async function receiveAgentMessage(req, res) {
       content,
       status: 'delivered'
     });
+
+    eventBroker.emit('NEW_SWARM_MESSAGE', message._id);
 
     return res.status(200).json({ 
       ok: true, 

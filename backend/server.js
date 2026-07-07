@@ -39,5 +39,12 @@ connectDB().then(async () => {
     } catch (err) {
       console.error("Telemetry failed to start:", err);
     }
+    
+    try {
+      require('./src/agents/eventBroker');
+      console.log("🧠 Event Broker Engine listening for swarm messages");
+    } catch (err) {
+      console.error("Event Broker failed to start:", err);
+    }
   });
 });
