@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState, useRef } from "react";
-import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import {
   Empty,
   EmptyHeader,
@@ -15,9 +15,9 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@/components/ui/empty";
-import { useRouter } from "next/navigation";
-import { useAssistantContext } from "@/context/assistant-context";
+} from '@/components/ui/empty';
+import { useRouter } from 'next/navigation';
+import { useAssistantContext } from '@/context/assistant-context';
 import {
   Upload,
   Trash2,
@@ -28,9 +28,9 @@ import {
   SearchX,
   MessageSquare,
   X,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/api";
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiUrl } from '@/lib/api';
 
 type Document = {
   _id: string;
@@ -49,9 +49,9 @@ type Document = {
 };
 
 function getDocumentProgress(document: Document) {
-  if (document.status === "ready") return 100;
+  if (document.status === 'ready') return 100;
 
-  if (document.status === "processing") {
+  if (document.status === 'processing') {
     const processedChunks = document.processedChunks || 0;
     const totalChunks = document.totalChunks || 0;
 
@@ -62,7 +62,7 @@ function getDocumentProgress(document: Document) {
     return 10;
   }
 
-  if (document.status === "failed") {
+  if (document.status === 'failed') {
     const processedChunks = document.processedChunks || 0;
     const totalChunks = document.totalChunks || 0;
 
@@ -75,25 +75,25 @@ function getDocumentProgress(document: Document) {
 }
 
 function getProcessingLabel(document: Document) {
-  if (document.status === "failed") return "Failed";
+  if (document.status === 'failed') return 'Failed';
 
-  const step = document.processingStep || "Processing";
+  const step = document.processingStep || 'Processing';
   const processedChunks = document.processedChunks || 0;
   const totalChunks = document.totalChunks || 0;
 
-  if (document.status === "processing" && totalChunks > 0) {
+  if (document.status === 'processing' && totalChunks > 0) {
     return `${step} · ${processedChunks}/${totalChunks}`;
   }
 
-  return document.status === "processing" ? "Processing..." : step;
+  return document.status === 'processing' ? 'Processing...' : step;
 }
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
-  const [documentsError, setDocumentsError] = useState("");
+  const [documentsError, setDocumentsError] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
 
   const router = useRouter();
@@ -101,90 +101,55 @@ export default function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
 
-  // Keep track of document statuses to trigger toast notifications on status transitions
-  const [prevDocStatuses, setPrevDocStatuses] = useState<Record<string, string>>({});
-
   const fetchDocuments = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) {
         setDocumentsLoading(true);
       }
 
-      setDocumentsError("");
+      setDocumentsError('');
 
-      const res = await fetch(apiUrl("/documents"), {
+      const res = await fetch(apiUrl('/documents'), {
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Could not load documents.");
+        throw new Error(data.error || 'Could not load documents.');
       }
 
-      const newDocs: Document[] = data.documents || [];
-      setDocuments(newDocs);
-
-      // Check transitions to trigger toast notifications
-      newDocs.forEach((doc) => {
-        const prevStatus = prevDocStatuses[doc._id];
-        if (prevStatus === "processing") {
-          if (doc.status === "ready") {
-            addToast({
-              type: "success",
-              title: `"${doc.title}" processed`,
-              description: "Document uploaded and indexed successfully.",
-            });
-          } else if (doc.status === "failed") {
-            addToast({
-              type: "error",
-              title: "Processing failed",
-              description: doc.processingError || `Failed to process "${doc.title}".`,
-            });
-          }
-        }
-      });
-
-      // Update stored statuses
-      const nextStatuses: Record<string, string> = {};
-      newDocs.forEach((doc) => {
-        nextStatuses[doc._id] = doc.status || "processing";
-      });
-      setPrevDocStatuses(nextStatuses);
+      setDocuments(data.documents || []);
     } catch {
-      setDocumentsError(
-        "Could not load documents. Make sure the backend server is running."
-      );
+      setDocumentsError('Could not load documents. Make sure the backend server is running.');
     } finally {
       if (showLoader) {
         setDocumentsLoading(false);
       }
     }
-  }, [prevDocStatuses, addToast]);
-
-  useEffect(() => {
-    fetchDocuments();
   }, []);
 
   useEffect(() => {
-    const hasProcessingDocuments = documents.some(
-      (document) => document.status === "processing"
-    );
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  useEffect(() => {
+    const hasProcessingDocuments = documents.some((document) => document.status === 'processing');
 
     if (!hasProcessingDocuments) return;
 
     const intervalId = window.setInterval(() => {
       fetchDocuments(false);
-    }, 2000); // Poll every 2 seconds when processing documents
+    }, 4000);
 
     return () => window.clearInterval(intervalId);
   }, [documents, fetchDocuments]);
 
   useEffect(() => {
     setContext({
-      page: "documents",
+      page: 'documents',
       documentCount: documents.length,
       documents: documents.map((d) => ({
         id: d._id,
@@ -202,12 +167,12 @@ export default function DocumentsPage() {
       setUploading(true);
 
       const form = new FormData();
-      form.append("file", file);
+      form.append('file', file);
 
-      const res = await fetch(apiUrl("/documents/upload"), {
-        method: "POST",
+      const res = await fetch(apiUrl('/documents/upload'), {
+        method: 'POST',
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
         body: form,
       });
@@ -216,16 +181,16 @@ export default function DocumentsPage() {
 
       if (data.ok) {
         addToast({
-          type: "success",
-          title: "Document uploaded",
+          type: 'success',
+          title: 'Document uploaded',
         });
 
         fetchDocuments(false);
       }
     } catch {
       addToast({
-        type: "error",
-        title: "Upload failed",
+        type: 'error',
+        title: 'Upload failed',
       });
     } finally {
       setUploading(false);
@@ -235,25 +200,23 @@ export default function DocumentsPage() {
   async function deleteDoc(id: string) {
     try {
       await fetch(apiUrl(`/documents/${id}`), {
-        method: "DELETE",
+        method: 'DELETE',
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
       });
 
       setDocuments((prev) => prev.filter((d) => d._id !== id));
-      setSelectedDocumentIds((prev) =>
-        prev.filter((selectedId) => selectedId !== id)
-      );
+      setSelectedDocumentIds((prev) => prev.filter((selectedId) => selectedId !== id));
 
       addToast({
-        type: "success",
-        title: "Document deleted",
+        type: 'success',
+        title: 'Document deleted',
       });
     } catch {
       addToast({
-        type: "error",
-        title: "Failed to delete",
+        type: 'error',
+        title: 'Failed to delete',
       });
     }
   }
@@ -271,7 +234,7 @@ export default function DocumentsPage() {
   function chatWithSelectedDocuments() {
     if (!selectedDocumentIds.length) return;
 
-    router.push(`/documents/chat?ids=${selectedDocumentIds.join(",")}`);
+    router.push(`/documents/chat?ids=${selectedDocumentIds.join(',')}`);
   }
 
   function openDocument(id: string) {
@@ -279,8 +242,8 @@ export default function DocumentsPage() {
   }
 
   function getFileIcon(type: string) {
-    if (type === "pdf") return <FileText className="size-5 text-red-500" />;
-    if (type === "md") return <FileCode className="size-5 text-blue-500" />;
+    if (type === 'pdf') return <FileText className="size-5 text-red-500" />;
+    if (type === 'md') return <FileCode className="size-5 text-blue-500" />;
     return <File className="size-5 text-muted-foreground" />;
   }
 
@@ -300,313 +263,277 @@ export default function DocumentsPage() {
 
   return (
     <AuthenticatedLayout>
-            <div className="mb-8 flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold">Documents</h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Knowledge base used by AI workflows
-                  </p>
-                </div>
+      <div className="mb-8 flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Documents</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Knowledge base used by AI workflows
+            </p>
+          </div>
 
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.txt,.md,.json,.csv"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadFile(file);
-                    }}
-                  />
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.md,.json,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadFile(file);
+              }}
+            />
 
-                  <Button
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="gap-2"
-                  >
-                    <Upload className="size-4" />
-                    {uploading ? "Uploading..." : "Upload Document"}
-                  </Button>
-                </>
+            <Button
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2"
+            >
+              <Upload className="size-4" />
+              {uploading ? 'Uploading...' : 'Upload Document'}
+            </Button>
+          </>
+        </div>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search documents..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {documentsLoading && (
+        <div className="py-12 text-sm text-muted-foreground">Loading documents...</div>
+      )}
+
+      {documentsError && !documentsLoading && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-sm font-medium text-destructive">{documentsError}</p>
+          <Button variant="outline" size="sm" onClick={() => fetchDocuments()} className="mt-3">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!documentsLoading && !documentsError && filteredDocs.length === 0 && (
+        <div className="py-4 w-full">
+          {documents.length > 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <SearchX />
+                </EmptyMedia>
+                <EmptyTitle>No results found</EmptyTitle>
+                <EmptyDescription>
+                  We couldn&apos;t find any matches for &quot;{search}
+                  &quot;. Check your spelling or try another keyword.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                  Clear search filter
+                </Button>
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FileText />
+                </EmptyMedia>
+                <EmptyTitle>No documents uploaded</EmptyTitle>
+                <EmptyDescription>
+                  Upload text, PDFs, or markdown knowledge elements to enrich your automation
+                  environment vectors.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+                  <Upload className="size-4" />
+                  Upload Document
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )}
+        </div>
+      )}
+
+      {!documentsLoading && !documentsError && filteredDocs.length > 0 && (
+        <div className="space-y-5">
+          {selectedDocumentIds.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  Selected: {selectedDocumentIds.length}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Choose documents to chat with together
+                </span>
               </div>
 
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search documents..."
-                  className="pl-9"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  disabled={!selectedDocumentIds.length}
+                  onClick={chatWithSelectedDocuments}
+                  className="gap-2"
+                >
+                  <MessageSquare className="size-4" />
+                  Chat with Selected
+                </Button>
 
-            {documentsLoading && (
-              <div className="py-12 text-sm text-muted-foreground">
-                Loading documents...
-              </div>
-            )}
-
-            {documentsError && !documentsLoading && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                <p className="text-sm font-medium text-destructive">
-                  {documentsError}
-                </p>
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => fetchDocuments()}
-                  className="mt-3"
+                  onClick={() => setSelectedDocumentIds([])}
+                  className="gap-2"
                 >
-                  Retry
+                  <X className="size-4" />
+                  Clear Selection
                 </Button>
               </div>
-            )}
+            </div>
+          )}
 
-            {!documentsLoading && !documentsError && filteredDocs.length === 0 && (
-              <div className="py-4 w-full">
-                {documents.length > 0 ? (
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <SearchX />
-                      </EmptyMedia>
-                      <EmptyTitle>No results found</EmptyTitle>
-                      <EmptyDescription>
-                        We couldn&apos;t find any matches for &quot;{search}
-                        &quot;. Check your spelling or try another keyword.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSearch("")}
-                      >
-                        Clear search filter
-                      </Button>
-                    </EmptyContent>
-                  </Empty>
-                ) : (
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <FileText />
-                      </EmptyMedia>
-                      <EmptyTitle>No documents uploaded</EmptyTitle>
-                      <EmptyDescription>
-                        Upload text, PDFs, or markdown knowledge elements to
-                        enrich your automation environment vectors.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <Button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="gap-2"
-                      >
-                        <Upload className="size-4" />
-                        Upload Document
-                      </Button>
-                    </EmptyContent>
-                  </Empty>
-                )}
-              </div>
-            )}
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {filteredDocs.map((doc) => {
+              const isSelected = selectedDocumentIds.includes(doc._id);
+              const isProcessing = doc.status === 'processing';
+              const isFailed = doc.status === 'failed';
+              const progress = getDocumentProgress(doc);
 
-            {!documentsLoading && !documentsError && filteredDocs.length > 0 && (
-              <div className="space-y-5">
-                {selectedDocumentIds.length > 0 && (
-                  <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        Selected: {selectedDocumentIds.length}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Choose documents to chat with together
-                      </span>
-                    </div>
+              return (
+                <Card
+                  key={doc._id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${doc.title || 'Untitled'}`}
+                  onClick={() => openDocument(doc._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openDocument(doc._id);
+                    }
+                  }}
+                  className={`p-5 flex flex-col justify-between cursor-pointer transition-all hover:border-primary hover:shadow-lg hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    isSelected
+                      ? 'border-primary bg-primary/10 shadow-md ring-1 ring-primary/30'
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-md bg-muted">{getFileIcon(doc.fileType)}</div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Button
-                        disabled={!selectedDocumentIds.length}
-                        onClick={chatWithSelectedDocuments}
-                        className="gap-2"
-                      >
-                        <MessageSquare className="size-4" />
-                        Chat with Selected
-                      </Button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-3">
+                        <p className="min-w-0 flex-1 truncate font-semibold">
+                          {doc.title || 'Untitled'}
+                        </p>
 
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedDocumentIds([])}
-                        className="gap-2"
-                      >
-                        <X className="size-4" />
-                        Clear Selection
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredDocs.map((doc) => {
-                    const isSelected = selectedDocumentIds.includes(doc._id);
-                    const isProcessing = doc.status === "processing";
-                    const isFailed = doc.status === "failed";
-                    const progress = getDocumentProgress(doc);
-
-                    return (
-                      <Card
-                        key={doc._id}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Open ${doc.title || "Untitled"}`}
-                        onClick={() => openDocument(doc._id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => {
                             e.preventDefault();
-                            openDocument(doc._id);
-                          }
-                        }}
-                        className={`p-5 flex flex-col justify-between cursor-pointer transition-all hover:border-primary hover:shadow-lg hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                          isSelected
-                            ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary/30"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-md bg-muted">
-                            {getFileIcon(doc.fileType)}
-                          </div>
+                            e.stopPropagation();
+                          }}
+                        >
+                          {isSelected && (
+                            <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
+                              Selected
+                            </Badge>
+                          )}
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start gap-3">
-                              <p className="min-w-0 flex-1 truncate font-semibold">
-                                {doc.title || "Untitled"}
-                              </p>
+                          <Checkbox
+                            checked={isSelected}
+                            aria-label={`Select ${doc.title || 'Untitled'}`}
+                            onCheckedChange={() => toggleDocumentSelection(doc._id)}
+                            onKeyDown={(e) => {
+                              e.stopPropagation();
+                            }}
+                          />
+                        </div>
+                      </div>
 
-                              <div
-                                className="flex items-center gap-2"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              >
-                                {isSelected && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="hidden text-xs sm:inline-flex"
-                                  >
-                                    Selected
-                                  </Badge>
-                                )}
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {doc.status && (
+                          <Badge
+                            variant={isFailed ? 'destructive' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {isFailed ? 'Failed' : doc.status}
+                          </Badge>
+                        )}
 
-                                <Checkbox
-                                  checked={isSelected}
-                                  aria-label={`Select ${doc.title || "Untitled"}`}
-                                  onCheckedChange={() =>
-                                    toggleDocumentSelection(doc._id)
-                                  }
-                                  onKeyDown={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              </div>
-                            </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {doc.fileType}
+                        </Badge>
 
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              {doc.status && (
-                                <Badge
-                                  variant={
-                                    isFailed ? "destructive" : "secondary"
-                                  }
-                                  className="text-xs"
-                                >
-                                  {isFailed ? "Failed" : doc.status}
-                                </Badge>
-                              )}
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {doc.chunkCount} chunks
+                        </Badge>
 
-                              <Badge variant="secondary" className="text-xs">
-                                {doc.fileType}
-                              </Badge>
+                        {doc.size && (
+                          <Badge variant="outline" className="text-xs">
+                            {formatSize(doc.size)}
+                          </Badge>
+                        )}
+                      </div>
 
-                              <Badge
-                                variant="outline"
-                                className="text-xs font-mono"
-                              >
-                                {doc.chunkCount} chunks
-                              </Badge>
+                      {(isProcessing || isFailed) && (
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center justify-between gap-3 text-xs">
+                            <span
+                              className={isFailed ? 'text-destructive' : 'text-muted-foreground'}
+                            >
+                              {getProcessingLabel(doc)}
+                            </span>
 
-                              {doc.size && (
-                                <Badge variant="outline" className="text-xs">
-                                  {formatSize(doc.size)}
-                                </Badge>
-                              )}
-                            </div>
-
-                            {(isProcessing || isFailed) && (
-                              <div className="mt-4 space-y-2">
-                                <div className="flex items-center justify-between gap-3 text-xs">
-                                  <span
-                                    className={
-                                      isFailed
-                                        ? "text-destructive"
-                                        : "text-muted-foreground"
-                                    }
-                                  >
-                                    {getProcessingLabel(doc)}
-                                  </span>
-
-                                  {!isFailed && (
-                                    <span className="font-mono text-muted-foreground">
-                                      {progress}%
-                                    </span>
-                                  )}
-                                </div>
-
-                                <Progress
-                                  value={progress}
-                                  className={`h-1.5 ${
-                                    isFailed ? "[&>div]:bg-destructive" : ""
-                                  }`}
-                                />
-
-                                {isFailed && doc.processingError && (
-                                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                                    {doc.processingError}
-                                  </p>
-                                )}
-                              </div>
+                            {!isFailed && (
+                              <span className="font-mono text-muted-foreground">{progress}%</span>
                             )}
                           </div>
-                        </div>
 
-                        <div className="flex justify-between items-center mt-6">
-                          <span className="text-xs text-muted-foreground">
-                            {doc.createdAt.slice(0, 10)}
-                          </span>
+                          <Progress
+                            value={progress}
+                            className={`h-1.5 ${isFailed ? '[&>div]:bg-destructive' : ''}`}
+                          />
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              deleteDoc(doc._id);
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
+                          {isFailed && doc.processingError && (
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {doc.processingError}
+                            </p>
+                          )}
                         </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-6">
+                    <span className="text-xs text-muted-foreground">
+                      {doc.createdAt.slice(0, 10)}
+                    </span>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        deleteDoc(doc._id);
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </AuthenticatedLayout>
   );
 }

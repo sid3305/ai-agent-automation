@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { MetricCard } from '@/components/workflow/MetricCard';
+import { ExecutionHistoryTable } from '@/components/workflow/ExecutionHistoryTable';
+import { WorkflowMetadataCard } from '@/components/workflow/WorkflowMetadataCard';
+import { VariablesCard } from '@/components/workflow/VariablesCard';
+import { Target, Clock, Activity, Coins, Copy } from 'lucide-react';
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 
 import { Card } from '@/components/ui/card';
@@ -15,6 +20,7 @@ import {
   Settings,
   ListChecks,
   ArrowRight,
+  ArrowDown,
   CheckCircle2,
   Circle,
   XCircle,
@@ -145,7 +151,11 @@ function getTypeColor(type: string) {
  * Finds the node definition by type and returns the first non-empty field values.
  * Falls back gracefully for types not yet loaded.
  */
-function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[] = [], agentMap: Record<string, string> = {}): string {
+function getStepDescription(
+  step: WorkflowStep,
+  nodeDefinitions: NodeDefinition[] = [],
+  agentMap: Record<string, string> = {}
+): string {
   const lowerType = (step.type || '').toLowerCase();
   const def = nodeDefinitions.find((d) => d.id.toLowerCase() === lowerType);
 
@@ -153,9 +163,12 @@ function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[
     const parts: string[] = [];
     for (const field of def.fields) {
       let val = step.config?.[field.name] ?? (step as any)[field.name];
-      
+
       if (val !== undefined && val !== null && String(val).trim() !== '') {
-        if ((field.name === 'agentId' || field.label.includes('Agent')) && agentMap[val as string]) {
+        if (
+          (field.name === 'agentId' || field.label.includes('Agent')) &&
+          agentMap[val as string]
+        ) {
           val = agentMap[val as string];
         }
 
@@ -175,7 +188,7 @@ function getStepDescription(step: WorkflowStep, nodeDefinitions: NodeDefinition[
   if (config.prompt || anyStep.prompt) return (config.prompt || anyStep.prompt).slice(0, 160);
   if (config.url && config.method) return `${config.method} ${config.url}`;
   if (config.seconds) return `Wait for ${config.seconds} seconds`;
-  
+
   if (lowerType === 'agent_call') {
     return config.agentId ? 'Delegated' : 'Target agent not set';
   }
@@ -194,6 +207,7 @@ export default function WorkflowDetailPage() {
   const [agentMap, setAgentMap] = useState<Record<string, string>>({});
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeView, setActiveView] = useState<'pipeline' | 'history'>('pipeline');
   const [historyOpen, setHistoryOpen] = useState<boolean>(false);
   const [nodeDefinitions, setNodeDefinitions] = useState<NodeDefinition[]>([]);
   const [apiSettingsOpen, setApiSettingsOpen] = useState<boolean>(false);
@@ -419,156 +433,235 @@ export default function WorkflowDetailPage() {
 
   return (
     <AuthenticatedLayout>
-      <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{workflow.name}</h1>
-              <p className="mt-2 text-muted-foreground">Workflow pipeline visualization</p>
-            </div>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
             <div className="flex items-center gap-3">
-              <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select Agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent._id} value={agent._id}>
-                      {agent.name} ({agent.config?.model})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={assignAgent}>
-                <Settings className="mr-2 size-4" />
-                Save Agent
-              </Button>
-              <Link href={`/workflows/${workflow._id}/builder`}>
-                <Button variant="outline">
-                  <Settings className="mr-2 size-4" />
-                  Configure
-                </Button>
-              </Link>
-              <Button variant="outline" onClick={() => setApiSettingsOpen(true)}>
-                <Globe className="mr-2 size-4" />
-                API Settings
-              </Button>
-              <Button
-                onClick={async () => {
-                  const res = await fetch(apiUrl(`/workflows/${workflow._id}/run`), {
-                    method: 'POST',
-                    headers: {
-                      Authorization: 'Bearer ' + localStorage.getItem('token'),
-                    },
-                  });
-
-                  const data = await res.json();
-                  if (data.ok && data.task) {
-                    setLatestTask(data.task);
-                    fetchWorkflow();
-                  }
-                  addToast({
-                    type: 'info',
-                    title: 'Workflow started',
-                    description: 'Execution is running in background',
-                  });
-                }}
+              <h1 className="text-3xl font-bold">{workflow.name}</h1>
+              <Badge
+                variant="outline"
+                className={
+                  workflow.status === 'running'
+                    ? 'bg-success/10 text-success border-success/20'
+                    : 'bg-muted/10 text-muted-foreground border-border'
+                }
               >
-                <Play className="mr-2 size-4" />
-                Run Workflow
-              </Button>
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${workflow.status === 'running' ? 'bg-success' : 'bg-muted-foreground'}`}
+                  />
+                  {workflow.status === 'running' ? 'Active' : 'Idle'}
+                </span>
+              </Badge>
             </div>
+            <p className="text-muted-foreground text-sm mt-1">
+              {workflow.description || 'Workflow pipeline visualization'}
+            </p>
           </div>
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {latestTask && (latestTask.status === 'pending' || latestTask.status === 'running') && (
+              <Badge className="bg-blue-500 hover:bg-blue-600 text-white border-transparent uppercase text-[10px] tracking-wider py-1 px-2">
+                pending
+              </Badge>
+            )}
+            <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Select Agent" />
+              </SelectTrigger>
+              <SelectContent>
+                {agents.map((agent) => (
+                  <SelectItem key={agent._id} value={agent._id}>
+                    {agent.name} ({agent.config?.model})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={assignAgent} className="h-9">
+              <Settings className="mr-2 size-4" />
+              Save Agent
+            </Button>
 
-          <div className="mb-6 flex items-center gap-3">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  className={
-                    workflow.status === 'running'
-                      ? 'bg-success/20 text-success border-success/30'
-                      : ''
-                  }
-                >
-                  {workflow.status}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{getStatusDescription(workflow.status)}</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Link href={`/workflows/${workflow._id}/tasks`}>
-              <Button variant="outline" size="sm">
-                <ListChecks className="mr-2 size-4" />
-                View Task History
+            <Link href={`/workflows/${workflow._id}/builder`}>
+              <Button variant="outline" className="h-9">
+                <Settings className="mr-2 size-4" />
+                Configure
               </Button>
             </Link>
 
-            <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-              <History className="mr-2 size-4" />
-              Version History
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={exportWorkflow}>
+            <Button variant="outline" className="h-9" onClick={exportWorkflow}>
               <Download className="mr-2 size-4" />
               Export Workflow
             </Button>
+
+            <Button variant="outline" className="h-9" onClick={() => setApiSettingsOpen(true)}>
+              <ShieldCheck className="mr-2 size-4" />
+              API
+            </Button>
+            <Button
+              className="h-9"
+              onClick={async () => {
+                const res = await fetch(apiUrl(`/workflows/${workflow._id}/run`), {
+                  method: 'POST',
+                  headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token'),
+                  },
+                });
+
+                const data = await res.json();
+                if (data.ok && data.task) {
+                  setLatestTask(data.task);
+                  fetchWorkflow();
+                }
+                addToast({
+                  type: 'info',
+                  title: 'Workflow started',
+                  description: 'Execution is running in background',
+                });
+              }}
+            >
+              <Play className="mr-2 size-4 fill-current" />
+              Run Now
+            </Button>
           </div>
+        </div>
 
-          <Card className="p-8">
-            <h2 className="mb-6 text-xl font-semibold">Workflow Pipeline</h2>
-            <div className="space-y-4">
-              {workflow.metadata?.steps?.map((step: WorkflowStep, index: number) => {
-                const status = getStepStatus(step.stepId);
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <MetricCard
+            title="Success Rate"
+            value="-"
+            icon={Target}
+            trend={{ value: '-', isPositive: true }}
+          />
+          <MetricCard title="Avg. Duration" value="-" icon={Clock} subtitle="seconds" />
+          <MetricCard title="Total Runs" value={tasks.length.toString()} icon={Activity} />
+          <MetricCard title="Est. Cost" value="-" icon={Coins} subtitle="tokens" />
+        </div>
 
-                return (
-                  <div key={step.stepId}>
-                    <Card
-                      className={`p-6 cursor-pointer ${getStepColor(status)}`}
-                      onClick={() => handleStepSelect(step)}
-                    >
-                      <div className="flex items-start gap-4">
-                        {getStepIcon(status)}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 flex flex-col gap-6" id="execution-history">
+            <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-lg border border-border/50">
+              <Button
+                variant="ghost"
+                className={`flex-1 justify-center ${activeView === 'pipeline' ? 'bg-background text-foreground shadow-sm cursor-default' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveView('pipeline')}
+              >
+                <Settings className="mr-2 size-4" />
+                Workflow Pipeline
+              </Button>
+              <Button
+                variant="ghost"
+                className={`flex-1 justify-center ${activeView === 'history' ? 'bg-background text-foreground shadow-sm cursor-default' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveView('history')}
+              >
+                <ListChecks className="mr-2 size-4" />
+                Task History
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex-1 justify-center text-muted-foreground hover:text-foreground"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <History className="mr-2 size-4" />
+                Version History
+              </Button>
+            </div>
 
-                        <div className="flex-1">
-                          <div className="mb-2 flex items-center gap-3">
-                            <Badge variant="outline" className={getTypeColor(step.type)}>
-                              {step.type}
+            <div className="max-h-[400px] overflow-y-auto pr-2 rounded-xl border border-border/40 bg-card">
+              {activeView === 'history' ? (
+                <ExecutionHistoryTable taskIds={tasks} />
+              ) : (
+                <div className="flex flex-col gap-2 p-4">
+                  {(workflow.metadata?.steps || []).map((step: WorkflowStep, index: number) => {
+                    const status = getStepStatus(step.stepId);
+                    const isFailed = status === 'failed';
+                    const isCompleted = status === 'completed';
+                    return (
+                      <div key={step.stepId} className="flex flex-col items-center">
+                        <div
+                          className={`w-full p-4 rounded-xl border ${isFailed ? 'border-destructive/50 bg-destructive/5' : isCompleted ? 'border-success/50 bg-success/5' : 'border-border bg-card shadow-sm'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {getStepIcon(status)}
+                            <Badge
+                              variant="secondary"
+                              className={`${getTypeColor(step.type)} px-2 py-0 text-[10px] uppercase font-mono`}
+                            >
+                              {step.type || 'unknown'}
                             </Badge>
-
-                            <h3 className="font-semibold">{step.name}</h3>
+                            <span className="font-semibold text-foreground">
+                              {step.name || step.type || 'Unnamed step'}
+                            </span>
                           </div>
-
-                          <p className="text-sm text-muted-foreground line-clamp-3">
+                          <p className="mt-2 text-sm text-muted-foreground pl-[44px]">
                             {getStepDescription(step, nodeDefinitions, agentMap)}
                           </p>
                         </div>
+                        {index < (workflow.metadata?.steps?.length || 0) - 1 && (
+                          <div className="flex justify-center py-4">
+                            <ArrowDown className="text-muted-foreground size-5" />
+                          </div>
+                        )}
                       </div>
-                    </Card>
-
-                    {index < (workflow.metadata?.steps?.length ?? 0) - 1 && (
-                      <div className="flex justify-center py-2">
-                        <ArrowRight className="size-5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                  {(!workflow.metadata?.steps || workflow.metadata.steps.length === 0) && (
+                    <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl">
+                      No steps configured for this workflow.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </Card>
 
-          <VersionHistoryDialog
-            workflowId={workflow._id}
-            open={historyOpen}
-            onOpenChange={setHistoryOpen}
-            onRollbackSuccess={fetchWorkflow}
-          />
+            <Card className="p-0 border-border bg-card shadow-sm rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-border/50">
+                <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase flex items-center gap-2">
+                  <Activity className="size-3.5" />
+                  Trigger Configuration
+                </h3>
+              </div>
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Webhook Endpoint</span>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-mono tracking-widest bg-muted/20"
+                  >
+                    POST
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="bg-muted/30 border border-border/50 rounded-md p-2 flex-1 font-mono text-xs text-muted-foreground truncate">
+                    https://api.workbench.ai/v1/webhooks/workflow/{workflow._id}
+                  </div>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                    <Copy className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
 
-          <ApiSettingsDialog
-            workflow={workflow}
-            open={apiSettingsOpen}
-            onOpenChange={setApiSettingsOpen}
-            onSaveSuccess={fetchWorkflow}
-          />
+          <div className="flex flex-col gap-6">
+            <WorkflowMetadataCard creatorName={undefined} createdAt={undefined} />
+            <VariablesCard />
+          </div>
+        </div>
+      </div>
+
+      <VersionHistoryDialog
+        workflowId={workflow._id}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        onRollbackSuccess={fetchWorkflow}
+      />
+
+      <ApiSettingsDialog
+        workflow={workflow}
+        open={apiSettingsOpen}
+        onOpenChange={setApiSettingsOpen}
+        onSaveSuccess={fetchWorkflow}
+      />
     </AuthenticatedLayout>
   );
 }
@@ -611,9 +704,7 @@ function TaskItem({ taskId }: { taskId: string }) {
       <p className="text-sm text-muted-foreground">Status: {task.status}</p>
 
       <Button size="sm" asChild className="mt-3">
-        <a href={`/dashboard/tasks/${task._id}`}>
-          View Task
-        </a>
+        <a href={`/dashboard/tasks/${task._id}`}>View Task</a>
       </Button>
     </Card>
   );
@@ -649,7 +740,10 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
   }
 
   return (
-    <dialog id="createWorkflowTaskModal" className="bg-background text-foreground rounded-lg shadow-lg border border-border p-6 max-w-lg w-full backdrop:bg-black/80">
+    <dialog
+      id="createWorkflowTaskModal"
+      className="bg-background text-foreground rounded-lg shadow-lg border border-border p-6 max-w-lg w-full backdrop:bg-black/80"
+    >
       <div className="w-full">
         <h3 className="font-bold text-lg">Create Task</h3>
 
@@ -682,9 +776,7 @@ function CreateTaskModal({ workflowId, refreshWorkflow }: CreateTaskModalProps) 
               Cancel
             </Button>
 
-            <Button type="submit">
-              Create
-            </Button>
+            <Button type="submit">Create</Button>
           </div>
         </form>
       </div>

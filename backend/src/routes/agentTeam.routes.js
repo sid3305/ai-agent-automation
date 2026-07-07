@@ -5,7 +5,7 @@ const {
   getTeams,
   createSession,
   getSessionLogs,
-  getDiscovery
+  getDiscovery,
 } = require('../controllers/agentTeam.controller');
 
 router.use(authMiddleware);

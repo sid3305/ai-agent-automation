@@ -7,19 +7,19 @@ const Agent = require('../models/agent.model');
 async function createTeam(req, res) {
   try {
     const { name, description, agents, externalAgents, topology } = req.body;
-    
-    if (!name) return res.status(400).json({ ok: false, error: "name_required" });
+
+    if (!name) return res.status(400).json({ ok: false, error: 'name_required' });
 
     const a2aSecret = crypto.randomBytes(32).toString('hex');
 
     const team = await AgentTeam.create({
       name,
-      description: description || "",
+      description: description || '',
       userId: req.user._id,
       agents: agents || [],
       externalAgents: externalAgents || [],
       topology: topology || 'mesh',
-      metadata: { a2aSecret }
+      metadata: { a2aSecret },
     });
 
     const teamResponse = team.toObject();
@@ -29,16 +29,19 @@ async function createTeam(req, res) {
 
     return res.status(201).json({ ok: true, team: teamResponse, generatedSecret: a2aSecret });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "server_error" });
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 }
 
 async function getTeams(req, res) {
   try {
-    const teams = await AgentTeam.find({ userId: req.user._id }).populate('agents', 'name capabilities type');
+    const teams = await AgentTeam.find({ userId: req.user._id }).populate(
+      'agents',
+      'name capabilities type'
+    );
     return res.json({ ok: true, teams });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "server_error" });
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 }
 
@@ -47,68 +50,71 @@ async function createSession(req, res) {
     const { teamId } = req.params;
     const { objective } = req.body;
 
-    if (!objective) return res.status(400).json({ ok: false, error: "objective_required" });
+    if (!objective) return res.status(400).json({ ok: false, error: 'objective_required' });
 
     const team = await AgentTeam.findOne({ _id: teamId, userId: req.user._id });
-    if (!team) return res.status(404).json({ ok: false, error: "team_not_found" });
+    if (!team) return res.status(404).json({ ok: false, error: 'team_not_found' });
 
     const session = await AgentSession.create({
       teamId,
       userId: req.user._id,
       objective,
       status: 'active',
-      sharedState: {}
+      sharedState: {},
     });
 
     return res.status(201).json({ ok: true, session });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "server_error" });
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 }
 
 async function getSessionLogs(req, res) {
   try {
     const { sessionId } = req.params;
-    
+
     const session = await AgentSession.findOne({ _id: sessionId, userId: req.user._id });
-    if (!session) return res.status(404).json({ ok: false, error: "session_not_found" });
+    if (!session) return res.status(404).json({ ok: false, error: 'session_not_found' });
 
     const logs = await MessageLog.find({ sessionId }).sort({ createdAt: 1 });
-    
+
     return res.json({ ok: true, logs });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "server_error" });
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 }
 
 async function getDiscovery(req, res) {
   try {
     const { teamId } = req.params;
-    
-    const team = await AgentTeam.findOne({ _id: teamId, userId: req.user._id }).populate('agents', 'name capabilities role');
-    if (!team) return res.status(404).json({ ok: false, error: "team_not_found" });
 
-    const internalCapabilities = team.agents.map(a => ({
+    const team = await AgentTeam.findOne({ _id: teamId, userId: req.user._id }).populate(
+      'agents',
+      'name capabilities role'
+    );
+    if (!team) return res.status(404).json({ ok: false, error: 'team_not_found' });
+
+    const internalCapabilities = team.agents.map((a) => ({
       id: a._id,
       name: a.name,
       type: 'internal',
       role: a.role,
-      capabilities: a.capabilities
+      capabilities: a.capabilities,
     }));
 
-    const externalCapabilities = team.externalAgents.map(a => ({
+    const externalCapabilities = team.externalAgents.map((a) => ({
       id: a.name,
       name: a.name,
       type: 'external',
-      capabilities: a.capabilities
+      capabilities: a.capabilities,
     }));
 
-    return res.json({ 
-      ok: true, 
-      discovery: [...internalCapabilities, ...externalCapabilities] 
+    return res.json({
+      ok: true,
+      discovery: [...internalCapabilities, ...externalCapabilities],
     });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "server_error" });
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 }
 
@@ -117,5 +123,5 @@ module.exports = {
   getTeams,
   createSession,
   getSessionLogs,
-  getDiscovery
+  getDiscovery,
 };

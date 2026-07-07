@@ -24,14 +24,14 @@ class EventBroker extends EventEmitter {
 
       if (!session || session.status !== 'active' || !team) return;
 
-      const lastExternalMsg = await MessageLog.findOne({ 
-        sessionId: session._id, 
-        'from.type': 'external' 
+      const lastExternalMsg = await MessageLog.findOne({
+        sessionId: session._id,
+        'from.type': 'external',
       }).sort({ createdAt: -1 });
 
-      const deadlockQuery = { 
-        sessionId: session._id, 
-        'from.type': 'internal' 
+      const deadlockQuery = {
+        sessionId: session._id,
+        'from.type': 'internal',
       };
 
       if (lastExternalMsg) {
@@ -43,34 +43,38 @@ class EventBroker extends EventEmitter {
       if (msgCount > this.MAX_HOPS) {
         session.status = 'failed';
         session.errorLog = session.errorLog || [];
-        session.errorLog.push({ message: 'Max consecutive internal hops exceeded (Deadlock shield activated)' });
+        session.errorLog.push({
+          message: 'Max consecutive internal hops exceeded (Deadlock shield activated)',
+        });
         await session.save();
         return;
       }
 
       if (msg.to.type === 'internal' || msg.to.id === 'broadcast') {
         const agents = await Agent.find({ _id: { $in: team.agents } });
-        
+
         let targetAgents = agents;
         if (msg.to.id !== 'broadcast') {
-          targetAgents = agents.filter(a => a.name === msg.to.id || String(a._id) === msg.to.id);
+          targetAgents = agents.filter((a) => a.name === msg.to.id || String(a._id) === msg.to.id);
         }
-        targetAgents = targetAgents.filter(a => a.name !== msg.from.id && String(a._id) !== msg.from.id);
+        targetAgents = targetAgents.filter(
+          (a) => a.name !== msg.from.id && String(a._id) !== msg.from.id
+        );
 
-        const executionPromises = targetAgents.map(agent => 
+        const executionPromises = targetAgents.map((agent) =>
           this.executeAgent(agent, session, team, msg.content)
         );
         await Promise.allSettled(executionPromises);
       } else if (msg.to.type === 'external') {
-        const extAgent = team.externalAgents.find(a => a.name === msg.to.id);
+        const extAgent = team.externalAgents.find((a) => a.name === msg.to.id);
         if (extAgent && extAgent.webhookUrl) {
           const response = await fetch(extAgent.webhookUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-a2a-secret': team.metadata.a2aSecret
+              'x-a2a-secret': team.metadata.a2aSecret,
             },
-            body: JSON.stringify(msg)
+            body: JSON.stringify(msg),
           });
 
           if (!response.ok) {
@@ -88,20 +92,26 @@ class EventBroker extends EventEmitter {
       let finalPrompt = `You are ${agent.name}.`;
       if (agent.role) finalPrompt += ` Your role is ${agent.role}.`;
       if (session.objective) finalPrompt += `\nTeam Objective: ${session.objective}`;
-      if (agent.systemInstructions) finalPrompt += `\nStrict Instructions:\n${agent.systemInstructions}`;
+      if (agent.systemInstructions)
+        finalPrompt += `\nStrict Instructions:\n${agent.systemInstructions}`;
 
       try {
         const memories = await retrieveMemory(agent, JSON.stringify(inputPayload), 5);
         if (memories && memories.length > 0) {
-          const memoryText = memories.map(m => m.content).join('\n\n').slice(0, 4000);
+          const memoryText = memories
+            .map((m) => m.content)
+            .join('\n\n')
+            .slice(0, 4000);
           finalPrompt += `\n\nMEMORY:\n${memoryText}`;
         }
       } catch (memErr) {
-        console.warn(`[Swarm] Memory retrieval skipped for ${agent.name}: Invalid Embedding URL or Service Down`);
+        console.warn(
+          `[Swarm] Memory retrieval skipped for ${agent.name}: Invalid Embedding URL or Service Down`
+        );
       }
 
       finalPrompt += `\n\nINCOMING MESSAGE:\n${JSON.stringify(inputPayload)}`;
-      
+
       finalPrompt += `\n\nCRITICAL OUTPUT FORMAT:
 You must respond ONLY with a raw JSON object. Do not include markdown fences. Use this exact schema:
 {
@@ -121,20 +131,35 @@ CRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. If you
 
       if (llmRes.error) throw new Error(llmRes.error);
 
-      let rawText = llmRes.text.trim().replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/\n?```$/, '');
+      const rawText = llmRes.text
+        .trim()
+        .replace(/^```json\n?/, '')
+        .replace(/^```\n?/, '')
+        .replace(/\n?```$/, '');
       const parsedOutput = JSON.parse(rawText.trim());
 
-      if (!parsedOutput || typeof parsedOutput !== 'object' || !parsedOutput.to || !parsedOutput.content) {
+      if (
+        !parsedOutput ||
+        typeof parsedOutput !== 'object' ||
+        !parsedOutput.to ||
+        !parsedOutput.content
+      ) {
         throw new Error('Invalid LLM output: Missing "to" or "content" fields.');
       }
 
       try {
-        await storeMemory(agent, JSON.stringify({
-          input: inputPayload,
-          output: parsedOutput
-        }), { sessionId: session._id, type: 'conversation' });
+        await storeMemory(
+          agent,
+          JSON.stringify({
+            input: inputPayload,
+            output: parsedOutput,
+          }),
+          { sessionId: session._id, type: 'conversation' }
+        );
       } catch (memErr) {
-        console.warn(`[Swarm] Memory storage skipped for ${agent.name}: Invalid Embedding URL or Service Down`);
+        console.warn(
+          `[Swarm] Memory storage skipped for ${agent.name}: Invalid Embedding URL or Service Down`
+        );
       }
 
       this.emit('INTERNAL_AGENT_MESSAGE', {
@@ -143,9 +168,8 @@ CRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. If you
         from: { id: agent.name, type: 'internal' },
         to: parsedOutput.to,
         type: parsedOutput.type || 'agent_result',
-        content: parsedOutput.content
+        content: parsedOutput.content,
       });
-
     } catch (err) {
       console.error(err);
     }
@@ -160,7 +184,7 @@ CRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. If you
         to: data.to,
         type: data.type,
         content: data.content,
-        status: 'delivered'
+        status: 'delivered',
       });
       this.emit('NEW_SWARM_MESSAGE', msg._id);
     } catch (err) {

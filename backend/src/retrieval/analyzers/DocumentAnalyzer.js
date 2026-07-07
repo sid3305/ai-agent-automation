@@ -14,11 +14,8 @@ class DocumentAnalyzer {
       hasHeadings: headingInfo.hasHeadings,
       headingCount: headingInfo.headingCount,
       hasTables,
-      fileType: document.fileType || "unknown",
-      estimatedComplexity: this.estimateComplexity(
-        chunkCount,
-        estimatedWordCount
-      ),
+      fileType: document.fileType || 'unknown',
+      estimatedComplexity: this.estimateComplexity(chunkCount, estimatedWordCount),
     };
   }
 
@@ -35,10 +32,7 @@ class DocumentAnalyzer {
       return 0;
     }
 
-    const totalLength = chunks.reduce(
-      (sum, chunk) => sum + chunk.length,
-      0
-    );
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 
     return Math.round(totalLength / chunks.length);
   }
@@ -52,20 +46,20 @@ class DocumentAnalyzer {
     }
 
     const headingPatterns = [
-        // Markdown headings
-        /^#{1,6}\s+\S+/gm,
+      // Markdown headings
+      /^#{1,6}\s+\S+/gm,
 
-        // Chapter 1
-        /^Chapter\s+\d+[:\s-].*/gim,
+      // Chapter 1
+      /^Chapter\s+\d+[:\s-].*/gim,
 
-        // Section 2
-        /^Section\s+\d+[:\s-].*/gim,
+      // Section 2
+      /^Section\s+\d+[:\s-].*/gim,
 
-        // 1. Introduction
-        /^\d+(\.\d+)*\.\s+[A-Za-z].*/gm,
+      // 1. Introduction
+      /^\d+(\.\d+)*\.\s+[A-Za-z].*/gm,
 
-        // ALL CAPS headings
-        /^[A-Z][A-Z\s]{4,30}$/gm
+      // ALL CAPS headings
+      /^[A-Z][A-Z\s]{4,30}$/gm,
     ];
 
     let headingCount = 0;
@@ -111,14 +105,14 @@ class DocumentAnalyzer {
 
   estimateComplexity(chunkCount, wordCount) {
     if (chunkCount < 20 && wordCount < 5000) {
-      return "low";
+      return 'low';
     }
 
     if (chunkCount < 100 && wordCount < 30000) {
-      return "medium";
+      return 'medium';
     }
 
-    return "high";
+    return 'high';
   }
 }
 

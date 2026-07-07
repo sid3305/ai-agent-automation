@@ -1,8 +1,8 @@
 const Document = require('../models/document.model');
-const DocumentChunk = require("../models/documentChunk.model");
-const { runEmbedding } = require("../agents/embeddingAdapter");
-const retrievalManager = require("../retrieval");
-const documentAnalyzer = require("../retrieval/analyzers/DocumentAnalyzer");
+const DocumentChunk = require('../models/documentChunk.model');
+const { runEmbedding } = require('../agents/embeddingAdapter');
+const retrievalManager = require('../retrieval');
+const documentAnalyzer = require('../retrieval/analyzers/DocumentAnalyzer');
 
 const STALE_PROCESSING_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -43,19 +43,16 @@ async function processDocument(agent, document, text) {
 
     const chunks = chunkText(text);
     // Analyze document structure and metadata for future retrieval strategy selection.
-    const analysis = documentAnalyzer.analyze(document,text,chunks);
+    const analysis = documentAnalyzer.analyze(document, text, chunks);
 
-    await Document.findByIdAndUpdate(
-      document._id,
-      {
-        $set: {
-          processingStep: "Embedding chunks",
-          processedChunks: 0,
-          totalChunks: chunks.length,
-          "metadata.analysis": analysis,
-        },
-      }
-    );
+    await Document.findByIdAndUpdate(document._id, {
+      $set: {
+        processingStep: 'Embedding chunks',
+        processedChunks: 0,
+        totalChunks: chunks.length,
+        'metadata.analysis': analysis,
+      },
+    });
 
     const records = [];
 
@@ -149,13 +146,7 @@ async function queryDocument(agent, userId, documentId, query, topK = 3) {
 }
 
 async function queryDocuments(agent, userId, documentIds, query, topK = 3) {
-  return retrievalManager.retrieve(
-    agent,
-    userId,
-    documentIds,
-    query,
-    topK
-  );
+  return retrievalManager.retrieve(agent, userId, documentIds, query, topK);
 }
 
 module.exports = {
