@@ -7,6 +7,7 @@ const SystemSettings = require('../models/systemSettings.model');
 const { claimNextTask, completeTask } = require('./queueService');
 const { executeStep } = require('./executor');
 const telemetryService = require('../services/telemetry.service');
+const LockManager = require('../services/lockManager.service');
 const WORKER_ID = process.env.WORKER_ID || 'agent-1';
 require('dotenv').config();
 
@@ -348,32 +349,60 @@ async function runWorkerLoop() {
                 return { success: false, branchContext };
               }
 
+              // If one of the branches was aborted because another worker got the join lock first,
+              // we must exit immediately to avoid duplicate join attempts.
+              if (branchResults.some((r) => r.joinSynchronized)) {
+                return { success: true, branchContext, joinSynchronized: true };
+              }
+
               const joinNode = branchResults.find((r) => r.joinNode)?.joinNode || null;
 
               if (joinNode) {
-                const joinResult = {
-                  stepId: getStepId(joinNode),
-                  type: 'join',
-                  input: aggregatedOutputs,
-                  output: aggregatedOutputs,
-                  success: true,
-                  timestamp: new Date(),
-                };
+                const joinNodeId = getStepId(joinNode);
+                const lockKey = `lock:join:${task._id}:${joinNodeId}`;
+                const hasLock = await LockManager.acquireLock(lockKey, 10000, WORKER_ID);
 
-                const isJoinCached =
-                  Array.isArray(task.stepResults) &&
-                  task.stepResults.some(
-                    (r) => r && r.stepId === getStepId(joinNode) && r.type === 'join'
-                  );
-                if (!isJoinCached) {
-                  await Task.findByIdAndUpdate(task._id, { $push: { stepResults: joinResult } });
+                if (!hasLock) {
+                  // Another worker has already claimed or completed this join node processing
+                  writeLog(`[Runner] Another worker is processing join node ${joinNodeId}. Aborting branch execution.`, 'info', {
+                    workerId: WORKER_ID, taskId: task._id, traceId: branchContext.traceId
+                  });
+                  return { success: true, branchContext, joinSynchronized: true };
                 }
-                branchContext.results.push(joinResult);
 
-                const nextEdge = getNextEdge(joinNode, joinResult);
-                if (!nextEdge) break;
-                stepNode = stepsMap[nextEdge.target];
-                continue;
+                try {
+                  const joinResult = {
+                    stepId: joinNodeId,
+                    type: 'join',
+                    input: aggregatedOutputs,
+                    output: aggregatedOutputs,
+                    success: true,
+                    timestamp: new Date(),
+                  };
+
+                  const isJoinCached =
+                    Array.isArray(task.stepResults) &&
+                    task.stepResults.some(
+                      (r) => r && r.stepId === joinNodeId && r.type === 'join'
+                    );
+
+                  if (!isJoinCached) {
+                    await Task.findByIdAndUpdate(task._id, { $push: { stepResults: joinResult } });
+                  }
+                  branchContext.results.push(joinResult);
+
+                  const nextEdge = getNextEdge(joinNode, joinResult);
+                  if (!nextEdge) {
+                    await LockManager.releaseLock(lockKey, WORKER_ID);
+                    break;
+                  }
+                  stepNode = stepsMap[nextEdge.target];
+                  await LockManager.releaseLock(lockKey, WORKER_ID);
+                  continue;
+                } catch (err) {
+                  await LockManager.releaseLock(lockKey, WORKER_ID);
+                  throw err;
+                }
               } else {
                 break;
               }
