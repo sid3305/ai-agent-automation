@@ -80,7 +80,6 @@ function getNodeColor(type: string) {
   }
 }
 
-
 function computeNodes(
   steps: WorkflowNode[],
   flowEdges: WorkflowEdge[],
@@ -101,7 +100,7 @@ function computeNodes(
       position: step.position || { x: index * 320, y: 120 },
       data: {
         id: step.id,
-        label: step.name || step.type || 'Untitled Step',
+        label: step.name || step.type,
         type: step.type,
         hasError,
         nodeDef,
@@ -159,14 +158,7 @@ export default function VisualBuilder({
   const futureRef = useRef<{ steps: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
   const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
-  const [flowEdges, setFlowEdges] = useState<Edge[]>(() => {
-    return (edges || []).map((e) => ({
-      ...e,
-      animated: true,
-      style: EDGE_STYLE,
-      label: e.label || (e.caseValue ? e.caseValue : e.condition ? e.condition.toUpperCase() : ''),
-    })) as unknown as Edge[];
-  });
+  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
   const [agents, setAgents] = useState<WorkflowAgent[]>([]);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
   const selectedMcpTool = mcpTools.find(
@@ -174,11 +166,6 @@ export default function VisualBuilder({
   );
 
   const lastPushedEdgesRef = useRef<WorkflowEdge[]>([]);
-
-  // Initialize lastPushedEdgesRef with initial edges
-  useEffect(() => {
-    lastPushedEdgesRef.current = edges || [];
-  }, []);
 
   const pushEdgesToParent = useCallback(
     (nextEdges: WorkflowEdge[]) => {

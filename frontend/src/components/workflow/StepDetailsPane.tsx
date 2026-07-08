@@ -40,6 +40,7 @@ interface StepDetailsPaneProps {
 export function StepDetailsPane({ step, result, status, taskId }: StepDetailsPaneProps) {
   const [openInput, setOpenInput] = useState(true);
   const [openOutput, setOpenOutput] = useState(true);
+
   if (!step) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-card border border-border shadow-sm rounded-xl p-8 text-center">

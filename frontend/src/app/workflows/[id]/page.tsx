@@ -480,16 +480,17 @@ export default function WorkflowDetailPage() {
               <Settings className="mr-2 size-4" />
               Save Agent
             </Button>
+
             <Link href={`/workflows/${workflow._id}/builder`}>
               <Button variant="outline" className="h-9">
                 <Settings className="mr-2 size-4" />
-                Edit
+                Configure
               </Button>
             </Link>
 
             <Button variant="outline" className="h-9" onClick={exportWorkflow}>
               <Download className="mr-2 size-4" />
-              Export
+              Export Workflow
             </Button>
 
             <Button variant="outline" className="h-9" onClick={() => setApiSettingsOpen(true)}>
@@ -647,6 +648,7 @@ export default function WorkflowDetailPage() {
           </div>
         </div>
       </div>
+
       <VersionHistoryDialog
         workflowId={workflow._id}
         open={historyOpen}
