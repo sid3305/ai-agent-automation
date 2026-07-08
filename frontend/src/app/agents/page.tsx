@@ -381,9 +381,33 @@ export default function AgentsPage() {
                       <Cpu className="size-6 text-primary" />
                     </div>
 
-                    <Badge variant={agent.status === 'active' ? 'success' : 'secondary'}>
-                      {agent.status ?? 'idle'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={agent.status === 'active' ? 'success' : 'secondary'}>
+                        {agent.status ?? 'idle'}
+                      </Badge>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            >
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit Agent</DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                              onClick={() => deleteAgent(agent._id)}
+                            >
+                              Delete Agent
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-semibold">{agent.name}</h3>
@@ -405,43 +429,6 @@ export default function AgentsPage() {
                           {cap}
                         </Badge>
                       ))}
-                  </div>
-
-                  <div className="mt-4 space-y-3 border-t border-border pt-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Model</span>
-                      <span className="font-mono text-xs">{agent.config?.model ?? '—'}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Thermometer className="size-4" />
-                        <span>Temperature</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        >
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit Agent</DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                          onClick={() => deleteAgent(agent._id)}
-                        >
-                          Delete Agent
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
 
                   <div className="mt-6 flex-1 pt-1">
