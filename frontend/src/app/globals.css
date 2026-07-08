@@ -307,12 +307,28 @@ body {
   }
 }
 
-/* Globally hide scrollbars but keep scroll functionality */
-* {
+/* Hide main browser scrollbars but keep scroll functionality */
+html,
+body {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / Edge */
 }
 
-*::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Reusable utility class for hiding scrollbars on specific containers */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
