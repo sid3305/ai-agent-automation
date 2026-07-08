@@ -11,7 +11,6 @@ import {
   CheckSquare,
   PenTool,
   Settings,
-  MoreVertical,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -115,13 +114,13 @@ export function PremiumNode({ data, selected }: { data: PremiumNodeData; selecte
         <Button
           variant="ghost"
           size="icon"
-          className="size-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
+          aria-label="Delete node"
+          className="size-6 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
           onClick={(e) => {
             e.stopPropagation();
             if (data.onDelete) {
               data.onDelete();
             } else {
-              const nodeId = (data as any).id; // wait, data doesn't have id, the node does. We can just use the CustomEvent with id if we pass it, but better to just pass id to data.
               const deleteEvent = new CustomEvent('delete-workflow-node', {
                 detail: { nodeId: (data as any).id },
               });

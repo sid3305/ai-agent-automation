@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { FilterBar } from '@/components/layout/filter-bar';
+import { PageHeader } from '@/components/layout/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -378,6 +379,7 @@ const HorizontalWorkflowCard = memo(
                 variant="secondary"
                 size="icon"
                 className="size-11 rounded-xl bg-muted/30 hover:bg-primary/20 hover:text-primary transition-colors"
+                aria-label="Run workflow"
               >
                 <Play className="size-5" fill="currentColor" />
               </Button>
@@ -390,6 +392,7 @@ const HorizontalWorkflowCard = memo(
                 e.preventDefault();
                 onEdit(workflow);
               }}
+              aria-label="Edit workflow"
             >
               <Pencil className="size-4" />
             </Button>
@@ -401,6 +404,7 @@ const HorizontalWorkflowCard = memo(
                 e.preventDefault();
                 onCopy(workflow._id);
               }}
+              aria-label="Copy workflow ID"
             >
               <Copy className="size-4" />
             </Button>
@@ -411,6 +415,7 @@ const HorizontalWorkflowCard = memo(
                   variant="ghost"
                   size="icon"
                   className="size-11 rounded-xl hover:bg-muted transition-colors"
+                  aria-label="More options"
                 >
                   <MoreVertical className="size-4" />
                 </Button>
@@ -525,6 +530,7 @@ const VerticalWorkflowCard = memo(
                         e.preventDefault();
                         onCopy(workflow._id);
                       }}
+                      aria-label="Copy workflow ID"
                     >
                       {isCopied ? (
                         <Check className="size-3 text-green-500" />
@@ -545,6 +551,7 @@ const VerticalWorkflowCard = memo(
                   e.preventDefault();
                   onEdit(workflow);
                 }}
+                aria-label="Edit workflow"
               >
                 <Pencil className="size-3 text-muted-foreground" />
               </Button>
@@ -557,6 +564,7 @@ const VerticalWorkflowCard = memo(
                   e.stopPropagation();
                   onDelete(workflow);
                 }}
+                aria-label="Delete workflow"
               >
                 <Trash2 className="size-3" />
               </Button>
@@ -839,51 +847,66 @@ export default function WorkflowsPage() {
   return (
     <AuthenticatedLayout>
       <>
-        <div className="mb-10 flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="text-[10px] font-bold tracking-[0.15em] text-muted-foreground uppercase flex items-center gap-2 mb-2">
+        <PageHeader
+          title="Workflows"
+          description="Manage your automation engine. Monitor real-time performance, optimize logic branches, and scale your agent deployments."
+          breadcrumbs={
+            <div className="text-[10px] font-bold tracking-[0.15em] text-muted-foreground uppercase flex items-center gap-2">
               <span className="text-muted-foreground/60">SYSTEM</span>
               <span className="text-muted-foreground/30">›</span>
               <span className="text-primary/80">WORKFLOWS</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">Workflows</h1>
-            <p className="mt-2 text-sm text-muted-foreground max-w-xl leading-relaxed">
-              Manage your automation engine. Monitor real-time performance, optimize logic branches,
-              and scale your agent deployments.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 mt-8">
-            <Button
-              variant="outline"
-              className="bg-transparent border-border/40 hover:bg-muted/10 h-10 px-4"
-            >
-              <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-              Filter
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-border/40 hover:bg-muted/10 h-10 px-4"
-            >
-              <Download className="mr-2 h-4 w-4 text-muted-foreground" />
-              Export
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="h-10">
-                  <Plus className="mr-2 size-4" />
-                  Create Workflow
-                  <ChevronDown className="ml-2 size-4 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setOpen('blank')}>Blank Workflow</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setOpen('template')}>
-                  Choose Template
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+          }
+          actions={
+            <>
+              <Button
+                variant="outline"
+                className="bg-transparent border-border/40 hover:bg-muted/10 h-10 px-4"
+              >
+                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                Filter
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-transparent border-border/40 hover:bg-muted/10 h-10 px-4"
+              >
+                <Download className="mr-2 h-4 w-4 text-muted-foreground" />
+                Export
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="h-10 px-4">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Workflow
+                    <ChevronDown className="ml-2 h-3 w-3 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuItem
+                    onClick={() => setOpen('blank')}
+                    className="py-2.5 cursor-pointer"
+                  >
+                    <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">Blank Workflow</span>
+                      <span className="text-xs text-muted-foreground">Start from scratch</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setOpen('template')}
+                    className="py-2.5 cursor-pointer"
+                  >
+                    <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">Use Template</span>
+                      <span className="text-xs text-muted-foreground">Start from a preset</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        />
 
         {loading ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

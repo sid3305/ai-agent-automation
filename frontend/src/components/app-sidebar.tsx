@@ -14,7 +14,7 @@ import {
   X,
   FlaskConical,
   Brain,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { UserProfileMenu } from '@/components/user-profile-menu';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,7 @@ const navGroups = [
       { name: 'Workflows', href: '/workflows', icon: Workflow, statKey: 'workflows' },
       { name: 'Agents', href: '/agents', icon: Bot, statKey: 'agents' },
       { name: 'Tasks', href: '/tasks', icon: ListChecks, statKey: 'tasks' },
-    ]
+    ],
   },
   {
     title: 'INTELLIGENCE',
@@ -41,15 +41,15 @@ const navGroups = [
       { name: 'Agent Playground', href: '/playground', icon: FlaskConical },
       { name: 'Documents', href: '/documents', icon: FileText },
       { name: 'Memory', href: '/memory', icon: Brain },
-    ]
+    ],
   },
   {
     title: 'OPERATIONS',
     items: [
       { name: 'Schedules', href: '/schedules', icon: Clock12, statKey: 'schedules' },
       { name: 'Logs', href: '/logs', icon: ScrollText },
-    ]
-  }
+    ],
+  },
 ];
 
 const SIDEBAR_EXPANDED = 260;
@@ -69,7 +69,7 @@ function SidebarContent({
 }) {
   const pathname = usePathname();
   const showLabels = !collapsed || mobileOpen;
-  const { data: stats } = useApi<any>("/dashboard/stats");
+  const { data: stats } = useApi<any>('/dashboard/stats');
 
   const renderNavItem = (item: { name: string; href: string; icon: any; statKey?: string }) => {
     const isActive =
@@ -96,10 +96,14 @@ function SidebarContent({
           />
         )}
 
-        <div className={cn(
-          "flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors",
-          isActive ? "bg-background shadow-sm border border-border/50 text-primary" : "text-sidebar-foreground/70 group-hover:bg-background/50 group-hover:text-sidebar-foreground"
-        )}>
+        <div
+          className={cn(
+            'flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors',
+            isActive
+              ? 'bg-background shadow-sm border border-border/50 text-primary'
+              : 'text-sidebar-foreground/70 group-hover:bg-background/50 group-hover:text-sidebar-foreground'
+          )}
+        >
           <item.icon className="size-4" />
         </div>
 
@@ -116,7 +120,7 @@ function SidebarContent({
             </motion.span>
           )}
         </AnimatePresence>
-        
+
         {showLabels && item.statKey && stats?.[item.statKey] !== undefined && (
           <span className="ml-auto text-[10px] font-semibold bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground group-hover:text-foreground transition-colors">
             {stats[item.statKey]}
@@ -128,9 +132,7 @@ function SidebarContent({
     if (!showLabels) {
       return (
         <Tooltip key={item.href} delayDuration={0}>
-          <TooltipTrigger asChild>
-            {navContent}
-          </TooltipTrigger>
+          <TooltipTrigger asChild>{navContent}</TooltipTrigger>
           <TooltipContent side="right" sideOffset={14}>
             {item.name}
           </TooltipContent>
@@ -146,7 +148,10 @@ function SidebarContent({
       <div className="flex h-full flex-col bg-sidebar">
         {/* Header - Workspace Switcher Style */}
         <div className="flex h-16 shrink-0 items-center justify-between px-4 mt-2">
-          <Link href="/" className="flex items-center gap-3 overflow-hidden rounded-xl p-1.5 hover:bg-sidebar-accent/50 transition-colors w-full border border-transparent hover:border-border/50 outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <Link
+            href="/"
+            className="flex items-center gap-3 overflow-hidden rounded-xl p-1.5 hover:bg-sidebar-accent/50 transition-colors w-full border border-transparent hover:border-border/50 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary shadow-sm">
               <Bot className="size-4" />
             </div>
@@ -189,7 +194,7 @@ function SidebarContent({
         </div>
 
         {/* Nav Groups */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none px-3 py-4 flex flex-col gap-6 mt-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-3 py-4 flex flex-col gap-6 mt-2">
           {navGroups.map((group) => (
             <div key={group.title} className="flex flex-col gap-1.5">
               {showLabels && (
@@ -200,7 +205,7 @@ function SidebarContent({
               <nav className="flex flex-col gap-1">{group.items.map(renderNavItem)}</nav>
             </div>
           ))}
-          
+
           <div className="flex flex-col gap-1.5">
             {showLabels && (
               <div className="px-3 pb-1 text-[10px] font-bold tracking-widest text-sidebar-foreground/40 uppercase">

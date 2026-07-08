@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/layout/page-header';
 import ScheduleTable from '@/components/schedules/ScheduleTable';
 import CreateScheduleDialog from '@/components/schedules/CreateScheduleDialog';
 import { useAssistantContext } from '@/context/assistant-context';
@@ -76,7 +77,7 @@ export default function SchedulesPage() {
   });
 
   const nextExecutionFormatted = nextExecution
-    ? nextExecution.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ? new Date(nextExecution as any).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '-';
 
   // Timeline representation (7 days)
@@ -114,13 +115,11 @@ export default function SchedulesPage() {
   return (
     <AuthenticatedLayout>
       <div className="flex flex-col gap-8 pb-8 animate-in fade-in duration-500">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Schedules</h1>
-            <p className="text-muted-foreground mt-1">Automate recurring workflow executions.</p>
-          </div>
-          <CreateScheduleDialog onCreated={fetchSchedules} />
-        </div>
+        <PageHeader
+          title="Schedules"
+          description="Automate recurring workflow executions."
+          actions={<CreateScheduleDialog onCreated={fetchSchedules} />}
+        />
 
         {/* Overview Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

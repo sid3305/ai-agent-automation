@@ -7,14 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@/components/ui/empty';
+import { EmptyState } from '@/components/ui/empty-state';
 
 import {
   Sheet,
@@ -186,34 +179,24 @@ export default function MemoryPage() {
           {!loading && memories.length === 0 && (
             <div className="py-16 rounded-2xl border border-dashed border-border/50 bg-background/20">
               {search ? (
-                <Empty className="border-none bg-transparent">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon" className="bg-background border border-border/50">
-                      <SearchX className="text-muted-foreground" />
-                    </EmptyMedia>
-                    <EmptyTitle>No memories found</EmptyTitle>
-                    <EmptyDescription>
-                      Your filter for &quot;{search}&quot; returned no semantic matches.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
+                <EmptyState
+                  className="border-none bg-transparent"
+                  icon={SearchX}
+                  title="No memories found"
+                  description={`Your filter for "${search}" returned no semantic matches.`}
+                  primaryAction={
                     <Button size="sm" variant="outline" onClick={() => setSearch('')}>
                       Clear Search
                     </Button>
-                  </EmptyContent>
-                </Empty>
+                  }
+                />
               ) : (
-                <Empty className="border-none bg-transparent">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon" className="bg-background border border-border/50">
-                      <Database className="text-muted-foreground" />
-                    </EmptyMedia>
-                    <EmptyTitle>Database empty</EmptyTitle>
-                    <EmptyDescription>
-                      Semantic memories will appear here once agents begin execution.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
+                <EmptyState
+                  className="border-none bg-transparent"
+                  icon={Database}
+                  title="Database empty"
+                  description="Semantic memories will appear here once agents begin execution."
+                />
               )}
             </div>
           )}

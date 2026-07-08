@@ -26,14 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useAssistantContext } from '@/context/assistant-context';
@@ -218,7 +211,8 @@ function MultiDocumentChatContent() {
   }, [clearContext, setContext]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    messagesEndRef.current?.scrollIntoView({ behavior: isReducedMotion ? 'auto' : 'smooth' });
   }, [messages, chatLoading]);
 
   const loadDocuments = useCallback(
@@ -340,35 +334,29 @@ function MultiDocumentChatContent() {
 
   if (!selectedDocumentIds.length) {
     return (
-      <AuthenticatedLayout layout="full">
-        <div className="flex min-h-screen items-center justify-center p-6">
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FileText />
-              </EmptyMedia>
-              <EmptyTitle>No documents selected</EmptyTitle>
-              <EmptyDescription>
-                Go back to Documents and select files to chat with.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
+      <AuthenticatedLayout layout="panel">
+        <div className="flex flex-1 min-h-0 items-center justify-center p-6">
+          <EmptyState
+            icon={FileText}
+            title="No documents selected"
+            description="Go back to Documents and select files to chat with."
+            primaryAction={
               <Button asChild className="gap-2">
                 <Link href="/documents">
                   <ArrowLeft className="size-4" />
                   Back to Documents
                 </Link>
               </Button>
-            </EmptyContent>
-          </Empty>
+            }
+          />
         </div>
       </AuthenticatedLayout>
     );
   }
 
   return (
-    <AuthenticatedLayout layout="full">
-      <div className="flex flex-col h-full gap-5 p-6 overflow-hidden">
+    <AuthenticatedLayout layout="panel">
+      <div className="flex flex-col flex-1 min-h-0 gap-5 p-6 overflow-hidden">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit gap-2">
@@ -436,7 +424,7 @@ function MultiDocumentChatContent() {
                   )}
 
                   {missingDocumentIds.length > 0 && (
-                    <div className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 px-3 py-2.5 text-sm text-yellow-200">
+                    <div className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2.5 text-sm text-warning-foreground">
                       {missingDocumentIds.length} selected document(s) could not be loaded or are
                       not accessible.
                     </div>
@@ -532,7 +520,7 @@ function MultiDocumentChatContent() {
 
             <div
               ref={chatScrollRef}
-              className="flex-1 min-h-0 overflow-y-auto px-5 py-5 scroll-smooth"
+              className="flex-1 min-h-0 overflow-y-auto px-5 py-5 scroll-smooth no-scrollbar"
             >
               {messages.length === 0 && !chatLoading && (
                 <div className="flex min-h-[420px] flex-col items-center justify-center text-center">

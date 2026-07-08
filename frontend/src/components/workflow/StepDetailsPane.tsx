@@ -1,14 +1,4 @@
-import { Card } from '@/components/ui/card';
-import {
-  CheckCircle2,
-  Circle,
-  XCircle,
-  ShieldCheck,
-  Copy,
-  Terminal,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { Copy, Terminal, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { JsonViewer } from './JsonViewer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

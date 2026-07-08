@@ -14,13 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Pause,
   Play,
@@ -458,26 +452,26 @@ export default function LogsPage() {
                )}
 
                {!loading && error && (
-                 <Empty className="h-full border-none">
-                   <EmptyHeader>
-                     <EmptyMedia><AlertCircle className="size-8 text-destructive" /></EmptyMedia>
-                     <EmptyTitle>Connection Error</EmptyTitle>
-                     <EmptyDescription>{error}</EmptyDescription>
-                   </EmptyHeader>
-                   <Button variant="outline" onClick={() => fetchLogs(true)} className="mt-4"><RefreshCw className="mr-2 size-4"/>Retry</Button>
-                 </Empty>
+                 <EmptyState
+                   className="h-full border-none"
+                   icon={AlertCircle}
+                   title="Connection Error"
+                   description={error}
+                   primaryAction={
+                     <Button variant="outline" onClick={() => fetchLogs(true)} className="mt-4">
+                       <RefreshCw className="mr-2 size-4"/>Retry
+                     </Button>
+                   }
+                 />
                )}
 
                {!loading && !error && logs.length === 0 && (
-                 <Empty className="h-full border-none">
-                   <EmptyHeader>
-                     <EmptyMedia><Activity className="size-8" /></EmptyMedia>
-                     <EmptyTitle>No runtime events yet</EmptyTitle>
-                     <EmptyDescription>
-                        {hasActiveFilters ? "No logs match your current filters." : "Run a workflow to generate system activity."}
-                     </EmptyDescription>
-                   </EmptyHeader>
-                 </Empty>
+                 <EmptyState
+                   className="h-full border-none"
+                   icon={Activity}
+                   title="No runtime events yet"
+                   description={hasActiveFilters ? "No logs match your current filters." : "Run a workflow to generate system activity."}
+                 />
                )}
 
                {!loading && !error && logs.length > 0 && viewMode === "structured" && (

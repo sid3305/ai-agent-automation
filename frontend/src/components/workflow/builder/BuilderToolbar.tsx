@@ -13,7 +13,6 @@ import {
   GitMerge,
   CheckSquare,
   PenTool,
-  Plus,
 } from 'lucide-react';
 
 interface BuilderToolbarProps {

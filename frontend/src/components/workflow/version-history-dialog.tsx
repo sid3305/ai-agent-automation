@@ -7,18 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { apiUrl } from '@/lib/api';
-import {
-  History,
-  Calendar,
-  User,
-  ArrowRight,
-  RotateCcw,
-  FileText,
-  AlertTriangle,
-  Play,
-  HelpCircle,
-  Cpu,
-} from 'lucide-react';
+import { History, Calendar, User, ArrowRight, RotateCcw, AlertTriangle, Cpu } from 'lucide-react';
 import type { BackendStep, WorkflowEdge } from '@/types/workflow';
 
 type VersionHistoryDialogProps = {

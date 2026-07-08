@@ -8,14 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@/components/ui/empty';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useRouter } from 'next/navigation';
 import { useAssistantContext } from '@/context/assistant-context';
 import {
@@ -416,61 +409,51 @@ export default function DocumentsPage() {
             {!documentsLoading && !documentsError && filteredDocs.length === 0 && (
               <div className="py-4 w-full">
                 {documents.length > 0 ? (
-                  <Empty className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon" className="bg-primary/5 text-primary">
-                        <SearchX />
-                      </EmptyMedia>
-                      <EmptyTitle>No results found</EmptyTitle>
-                      <EmptyDescription>
-                        We couldn&apos;t find any matches for &quot;{search}&quot;. Check your
-                        spelling or try another keyword.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
+                  <EmptyState
+                    className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm"
+                    icon={SearchX}
+                    title="No results found"
+                    description={`We couldn't find any matches for "${search}". Check your spelling or try another keyword.`}
+                    primaryAction={
                       <Button variant="outline" size="sm" onClick={() => setSearch('')}>
                         Clear search filter
                       </Button>
-                    </EmptyContent>
-                  </Empty>
+                    }
+                  />
                 ) : (
-                  <Empty className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm py-12">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon" className="bg-primary/5 text-primary size-20 mb-4">
-                        <Database className="size-10" />
-                      </EmptyMedia>
-                      <EmptyTitle className="text-2xl">Your knowledge base is empty</EmptyTitle>
-                      <EmptyDescription className="max-w-md mx-auto mt-2">
-                        Upload documents to provide context to your AI agents. These sources will be
-                        automatically indexed and used across your automation workflows.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent className="mt-8 flex flex-col items-center gap-6">
-                      <Button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="gap-2 px-8 h-12 rounded-full shadow-md hover:shadow-lg transition-all"
-                        size="lg"
-                      >
-                        <Upload className="size-4" />
-                        Upload First Document
-                      </Button>
+                  <EmptyState
+                    className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm py-12"
+                    icon={Database}
+                    title="Your knowledge base is empty"
+                    description="Upload documents to provide context to your AI agents. These sources will be automatically indexed and used across your automation workflows."
+                    primaryAction={
+                      <div className="mt-8 flex flex-col items-center gap-6">
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="gap-2 px-8 h-12 rounded-full shadow-md hover:shadow-lg transition-all"
+                          size="lg"
+                        >
+                          <Upload className="size-4" />
+                          Upload First Document
+                        </Button>
 
-                      <div className="flex gap-2 justify-center">
-                        <Badge variant="outline" className="px-3 py-1 bg-background/50">
-                          PDF
-                        </Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-background/50">
-                          TXT
-                        </Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-background/50">
-                          Markdown
-                        </Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-background/50">
-                          CSV
-                        </Badge>
+                        <div className="flex gap-2 justify-center">
+                          <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                            PDF
+                          </Badge>
+                          <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                            TXT
+                          </Badge>
+                          <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                            Markdown
+                          </Badge>
+                          <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                            CSV
+                          </Badge>
+                        </div>
                       </div>
-                    </EmptyContent>
-                  </Empty>
+                    }
+                  />
                 )}
               </div>
             )}

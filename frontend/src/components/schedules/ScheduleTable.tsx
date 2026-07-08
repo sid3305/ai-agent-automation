@@ -10,14 +10,7 @@ import { CronExpressionParser } from 'cron-parser';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiUrl } from '@/lib/api';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@/components/ui/empty';
+import { EmptyState } from '@/components/ui/empty-state';
 import CreateScheduleDialog from '@/components/schedules/CreateScheduleDialog';
 
 type Schedule = {
@@ -158,33 +151,28 @@ export default function ScheduleTable({ schedules, loading, onChange }: Schedule
 
   if (!schedules.length) {
     return (
-      <Empty className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm py-12">
-        <EmptyHeader>
-          <EmptyMedia variant="icon" className="bg-primary/5 text-primary size-20 mb-4">
-            <Calendar className="size-10" />
-          </EmptyMedia>
-          <EmptyTitle className="text-2xl">No automations scheduled</EmptyTitle>
-          <EmptyDescription className="max-w-md mx-auto mt-2">
-            Set up recurring schedules to automatically trigger your workflows. Create daily
-            reports, weekly data syncs, or custom pipelines.
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent className="mt-8 flex flex-col items-center gap-6">
-          <CreateScheduleDialog onCreated={onChange} />
-
-          <div className="flex gap-2 justify-center">
-            <Badge variant="outline" className="px-3 py-1 bg-background/50">
-              Daily Report
-            </Badge>
-            <Badge variant="outline" className="px-3 py-1 bg-background/50">
-              Weekly Sync
-            </Badge>
-            <Badge variant="outline" className="px-3 py-1 bg-background/50">
-              Data Pipeline
-            </Badge>
+      <EmptyState
+        className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm py-12"
+        icon={Calendar}
+        title="No automations scheduled"
+        description="Set up recurring schedules to automatically trigger your workflows. Create daily reports, weekly data syncs, or custom pipelines."
+        primaryAction={
+          <div className="flex flex-col items-center gap-6">
+            <CreateScheduleDialog onCreated={onChange} />
+            <div className="flex gap-2 justify-center">
+              <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                Daily Report
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                Weekly Sync
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1 bg-background/50">
+                Data Pipeline
+              </Badge>
+            </div>
           </div>
-        </EmptyContent>
-      </Empty>
+        }
+      />
     );
   }
 

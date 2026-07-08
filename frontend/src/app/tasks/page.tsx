@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { Card } from '@/components/ui/card';
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
+import { PageHeader } from '@/components/layout/page-header';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,14 +27,7 @@ import { useAssistantContext } from '@/context/assistant-context';
 import { apiUrl } from '@/lib/api';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@/components/ui/empty';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatusBadge } from '@/components/ui/status-badge';
 
 const PAGE_SIZE = 10;
@@ -189,25 +183,21 @@ export default function TasksPage() {
   return (
     <AuthenticatedLayout>
       <div className="max-w-7xl mx-auto flex flex-col gap-6 pb-12">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Task Executions</h1>
-            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-              View and manage workflow execution history with real-time status tracking and detailed
-              step analysis.
-            </p>
-          </div>
-          <Link href="/workflows" passHref>
-            <Button
-              variant="secondary"
-              className="gap-2 bg-background border border-border hover:bg-muted font-semibold"
-            >
-              <Plus className="size-4" />
-              New Workflow
-            </Button>
-          </Link>
-        </div>
+        <PageHeader
+          title="Task Executions"
+          description="View and manage workflow execution history with real-time status tracking and detailed step analysis."
+          actions={
+            <Link href="/workflows" passHref>
+              <Button
+                variant="secondary"
+                className="gap-2 bg-background border border-border hover:bg-muted font-semibold"
+              >
+                <Plus className="size-4" />
+                New Workflow
+              </Button>
+            </Link>
+          }
+        />
 
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-3">
@@ -268,31 +258,22 @@ export default function TasksPage() {
             </div>
           ) : filteredTasks.length === 0 ? (
             <div className="flex-1 flex items-center justify-center p-8">
-              <Empty className="border-none bg-transparent shadow-none">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon" className="bg-muted/20">
-                    {search ? (
-                      <SearchX className="size-8 text-muted-foreground/50" />
-                    ) : (
-                      <Inbox className="size-8 text-muted-foreground/50" />
-                    )}
-                  </EmptyMedia>
-                  <EmptyTitle className="text-xl">
-                    {search ? 'No results found' : 'No task executions yet'}
-                  </EmptyTitle>
-                  <EmptyDescription className="text-muted-foreground">
-                    {search ? (
-                      <>
-                        We couldn&apos;t find any matches for &quot;
-                        <span className="text-foreground">{search}</span>&quot;.
-                      </>
-                    ) : (
-                      'Run a workflow to see its execution history and logs here.'
-                    )}
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  {search ? (
+              <EmptyState
+                className="border-none bg-transparent shadow-none"
+                icon={search ? SearchX : Inbox}
+                title={search ? 'No results found' : 'No task executions yet'}
+                description={
+                  search ? (
+                    <>
+                      We couldn&apos;t find any matches for &quot;
+                      <span className="text-foreground">{search}</span>&quot;.
+                    </>
+                  ) : (
+                    'Run a workflow to see its execution history and logs here.'
+                  )
+                }
+                primaryAction={
+                  search ? (
                     <Button variant="outline" onClick={() => setSearch('')}>
                       Clear search
                     </Button>
@@ -300,9 +281,9 @@ export default function TasksPage() {
                     <Link href="/workflows" passHref>
                       <Button variant="outline">Go to Workflows</Button>
                     </Link>
-                  )}
-                </EmptyContent>
-              </Empty>
+                  )
+                }
+              />
             </div>
           ) : (
             <>
@@ -378,6 +359,7 @@ export default function TasksPage() {
                               size="icon"
                               className="size-8 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={() => deleteTask(task._id)}
+                              aria-label="Delete task"
                             >
                               <Trash2 className="size-4" />
                             </Button>
@@ -403,6 +385,7 @@ export default function TasksPage() {
                     className="size-8"
                     disabled={page === 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-label="Previous page"
                   >
                     <span className="text-xs">&lt;</span>
                   </Button>
@@ -435,6 +418,7 @@ export default function TasksPage() {
                     className="size-8"
                     disabled={page === totalPages}
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Next page"
                   >
                     <span className="text-xs">&gt;</span>
                   </Button>
