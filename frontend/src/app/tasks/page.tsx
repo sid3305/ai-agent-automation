@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,10 @@ type Task = {
       type: string;
     }[];
   };
+};
+type Workflow = {
+  _id: string;
+  name: string;
 };
 
 function getStatusColor(status: string) {
@@ -84,9 +88,14 @@ function TableRowSkeleton() {
 
 export default function TasksPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [search, setSearch] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState(
+    searchParams.get("workflow") ?? ""
+  );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -151,14 +160,42 @@ export default function TasksPage() {
       setLoading(false);
     }
   }
+    async function fetchWorkflows() {
+    try {
+      const res = await fetch(apiUrl("/workflows"), {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
 
+      const data = await res.json();
+
+      if (data.ok) {
+        setWorkflows(data.workflows ?? []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch workflows", err);
+    }
+  }
   useEffect(() => {
-    fetchTasks(page);
+  fetchTasks(page);
+  fetchWorkflows();
   }, [page]);
 
-  const filteredTasks = tasks.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
+  const workflowOptions = workflows.filter((workflow) =>
+    tasks.some((task) => task.workflowId === workflow._id)
   );
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesWorkflow =
+      !workflowFilter || task.workflowId === workflowFilter;
+
+    return matchesSearch && matchesWorkflow;
+  });
 
   useEffect(() => {
     setContext({
@@ -195,14 +232,47 @@ export default function TasksPage() {
             </div>
 
             <Card className="mb-6 p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search tasks by name..."
-                  className="pl-10"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search tasks by name..."
+                    className="pl-10"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                    Filter by workflow
+                  </label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={workflowFilter}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setWorkflowFilter(value);
+
+                      const params = new URLSearchParams(searchParams.toString());
+
+                      if (value) {
+                        params.set("workflow", value);
+                      } else {
+                        params.delete("workflow");
+                      }
+
+                      router.push(`/tasks?${params.toString()}`);
+                    }}
+                  >
+                    <option value="">All workflows</option>
+                    {workflowOptions.map((workflow) => (
+                      <option key={workflow._id} value={workflow._id}>
+                        {workflow.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </Card>
 
