@@ -1118,7 +1118,7 @@ function CreateWorkflowModal({
 
   return (
     <Dialog open={!!mode} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-w-5xl xl:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Create Workflow</DialogTitle>
           <DialogDescription>Create a blank workflow or start from a template.</DialogDescription>

@@ -161,7 +161,7 @@ export default function VersionHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl">
+      <DialogContent className="max-w-5xl xl:max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl">
         <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
