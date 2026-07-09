@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -41,19 +41,19 @@ export default function ApiSettingsDialog({
 }: ApiSettingsDialogProps) {
   const { addToast } = useToast();
 
-  // Settings State
   const [apiEnabled, setApiEnabled] = useState(false);
   const [endpointName, setEndpointName] = useState('');
   const [authentication, setAuthentication] = useState(false);
   const [rateLimit, setRateLimit] = useState(false);
   const [responseStepId, setResponseStepId] = useState('');
 
-  // UI state
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copiedType, setCopiedType] = useState<string | null>(null);
+  const [activeIntegrationTab, setActiveIntegrationTab] = useState<'curl' | 'javascript' | 'http'>(
+    'curl'
+  );
 
-  // Initialize from workflow
   useEffect(() => {
     if (open && workflow) {
       setApiEnabled(workflow.apiSettings?.enabled ?? false);
@@ -65,21 +65,16 @@ export default function ApiSettingsDialog({
     }
   }, [open, workflow]);
 
-  // Generate public endpoint url preview
   const host =
     typeof window !== 'undefined'
       ? `${window.location.protocol}//${window.location.host}`
       : 'http://localhost:3000';
-  // Backend runs on port 5000 typically
   const backendBaseUrl = host.includes(':3000') ? host.replace(':3000', ':5000') : host;
   const slugPreview = endpointName.trim() || workflow._id;
   const publicApiUrl = `${backendBaseUrl}/api/workflows/public/${slugPreview}`;
   const dockerApiUrl = `http://agentautomation-backend:5000/api/workflows/public/${slugPreview}`;
-
-  // Get workflow steps
   const steps = workflow.metadata?.steps ?? [];
 
-  // Save changes
   async function handleSave() {
     setSaving(true);
     setErrorMessage('');
@@ -87,7 +82,6 @@ export default function ApiSettingsDialog({
     try {
       const trimmedSlug = endpointName.trim();
 
-      // Client-side validations
       if (apiEnabled) {
         if (!trimmedSlug) {
           throw new Error('Endpoint slug is required when API is enabled');
@@ -143,292 +137,317 @@ export default function ApiSettingsDialog({
     }
   }
 
-  // Copy helper
   function handleCopy(text: string, type: string) {
     navigator.clipboard.writeText(text);
     setCopiedType(type);
     setTimeout(() => setCopiedType(null), 2000);
   }
 
-  // Code templates
-  const curlCode = `curl -X POST "${publicApiUrl}" \\
-  -H "Content-Type: application/json" \\${authentication ? '\n  -H "Authorization: Bearer <your_api_key>" \\' : ''}
-  -d '{
-    "question": "How does billing work?"
-  }'`;
+  const curlCode = [
+    `curl -X POST "${publicApiUrl}" \\`,
+    `  -H "Content-Type: application/json" \\`,
+    authentication ? `  -H "Authorization: Bearer <your_api_key>" \\` : null,
+    `  -d '{`,
+    `    "question": "How does billing work?"`,
+    `  }'`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
-  const fetchCode = `fetch("${publicApiUrl}", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"${authentication ? ',\n    "Authorization": "Bearer <your_api_key>"' : ''}
-  },
-  body: JSON.stringify({
-    question: "How does billing work?"
-  })
-})
-.then(res => res.json())
-.then(data => console.log(data));`;
+  const fetchCode = [
+    `fetch("${publicApiUrl}", {`,
+    `  method: "POST",`,
+    `  headers: {`,
+    `    "Content-Type": "application/json"${authentication ? ',\n    "Authorization": "Bearer <your_api_key>"' : ''}`,
+    `  },`,
+    `  body: JSON.stringify({`,
+    `    question: "How does billing work?"`,
+    `  })`,
+    `})`,
+    `.then(res => res.json())`,
+    `.then(data => console.log(data));`,
+  ].join('\n');
 
-  const httpStepCode = `{
-  "method": "POST",
-  "url": "${dockerApiUrl}",
-  "headers": {
-    "Content-Type": "application/json"${authentication ? ',\n    "Authorization": "Bearer <your_api_key>"' : ''}
-  },
-  "body": "{\\n  \\"question\\": \\"{{input.question}}\\"\\n}"
-}`;
+  const httpStepCode = [
+    `{`,
+    `  "method": "POST",`,
+    `  "url": "${dockerApiUrl}",`,
+    `  "headers": {`,
+    `    "Content-Type": "application/json"${authentication ? ',\n    "Authorization": "Bearer <your_api_key>"' : ''}`,
+    `  },`,
+    `  "body": "{\\n  \\\"question\\\": \\\"{{input.question}}\\\"\\n}"`,
+    `}`,
+  ].join('\n');
+
+  const activeCode =
+    activeIntegrationTab === 'curl'
+      ? curlCode
+      : activeIntegrationTab === 'javascript'
+        ? fetchCode
+        : httpStepCode;
+
+  const activeTitle =
+    activeIntegrationTab === 'curl'
+      ? 'cURL Integration'
+      : activeIntegrationTab === 'javascript'
+        ? 'JavaScript Fetch'
+        : 'HTTP Workflow Integration';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl">
-        <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+      <DialogContent
+        className={`flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background shadow-2xl transition-[max-width,max-height,opacity,transform] duration-300 ease-out ${
+          apiEnabled ? 'max-h-[110vh] max-w-5xl xl:max-w-6xl' : 'max-w-5xl xl:max-w-6xl'
+        }`}
+      >
+        <DialogHeader className="border-b border-border/70 bg-muted/20 px-6 py-5 sm:px-8">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
               <Globe className="size-5" />
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight">
+            <div className="space-y-1">
+              <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
                 API Endpoint Settings
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Configure settings to publish this workflow as a callable REST API service
+              <DialogDescription className="text-sm text-muted-foreground">
+                {apiEnabled
+                  ? 'Publish this workflow as a callable REST API and configure how it behaves.'
+                  : 'Publish this workflow as a REST API when you are ready.'}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0">
-          <div className="p-6 space-y-6">
+          <div className="space-y-4 p-4 sm:p-6 md:p-8">
             {errorMessage && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3.5 text-destructive flex items-start gap-2.5 text-sm">
-                <AlertCircle className="size-4 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 size-4 flex-shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* General Toggles */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-4">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-semibold">Publish as API Endpoint</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Exposes this workflow at a public HTTP URL
+            <div className="rounded-2xl border border-border/70 bg-card/70 shadow-sm">
+              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold text-foreground">
+                    Publish as API Endpoint
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Expose this workflow publicly through a REST endpoint.
                   </p>
                 </div>
                 <Switch checked={apiEnabled} onCheckedChange={setApiEnabled} />
               </div>
 
-              {apiEnabled && (
-                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                  {/* Slug input */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="slug"
-                      className="text-xs font-semibold text-muted-foreground uppercase"
-                    >
-                      Endpoint Slug / Custom Path
-                    </Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="slug"
-                          placeholder="customer-support-agent"
-                          value={endpointName}
-                          onChange={(e) =>
-                            setEndpointName(e.target.value.toLowerCase().replace(/\s+/g, '-'))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Letters, numbers, hyphens, and underscores only. No spaces.
-                    </p>
-                  </div>
-
-                  {/* URL Preview */}
-                  <div className="rounded-lg bg-muted/50 border p-3 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                        Public URL Preview
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className="bg-primary/5 border-primary/20 text-primary text-[10px] px-1 font-mono"
+              <div
+                className={`overflow-hidden border-t border-border/70 px-5 py-5 transition-all duration-300 ease-out ${
+                  apiEnabled ? 'max-h-[2600px] opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4 sm:p-5">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="slug"
+                        className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
                       >
-                        POST
-                      </Badge>
-                    </div>
-                    <div className="font-mono text-xs break-all text-foreground select-all">
-                      {publicApiUrl}
-                    </div>
-                  </div>
-
-                  {/* Security options */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
-                    <div className="flex items-center justify-between border rounded-lg p-3 bg-muted/10">
-                      <div className="space-y-0.5">
-                        <Label className="text-xs font-semibold flex items-center gap-1.5">
-                          <Lock className="size-3.5 text-amber-500" />
-                          Require Authentication
-                        </Label>
-                        <p className="text-[10px] text-muted-foreground">
-                          Requires Bearer API key header
-                        </p>
-                      </div>
-                      <Switch checked={authentication} onCheckedChange={setAuthentication} />
-                    </div>
-
-                    <div className="flex items-center justify-between border rounded-lg p-3 bg-muted/10">
-                      <div className="space-y-0.5">
-                        <Label className="text-xs font-semibold flex items-center gap-1.5">
-                          <Sliders className="size-3.5 text-blue-500" />
-                          Rate Limiting
-                        </Label>
-                        <p className="text-[10px] text-muted-foreground">
-                          Throttles excessive requests
-                        </p>
-                      </div>
-                      <Switch checked={rateLimit} onCheckedChange={setRateLimit} />
+                        Endpoint
+                      </Label>
+                      <Input
+                        id="slug"
+                        placeholder="customer-support-agent"
+                        value={endpointName}
+                        onChange={(e) =>
+                          setEndpointName(e.target.value.toLowerCase().replace(/\s+/g, '-'))
+                        }
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Use letters, numbers, hyphens, and underscores only. No spaces.
+                      </p>
                     </div>
                   </div>
 
-                  {/* Response Output Mapping */}
-                  <div className="space-y-2 pt-2 border-t">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <ShieldCheck className="size-4 text-success" />
-                      Response Output Mapping
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Select which step output to return in the HTTP response. If not specified, the
-                      API defaults to returning the final executed step&apos;s output.
-                    </p>
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4 sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">
+                            Endpoint Preview
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="border-primary/20 bg-primary/5 px-2 py-0.5 font-mono text-[10px] uppercase text-primary"
+                          >
+                            POST
+                          </Badge>
+                        </div>
+                        <p className="break-all text-sm text-muted-foreground">{publicApiUrl}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => handleCopy(publicApiUrl, 'url')}
+                      >
+                        {copiedType === 'url' ? (
+                          <Check className="mr-2 size-4 text-success" />
+                        ) : (
+                          <Copy className="mr-2 size-4" />
+                        )}
+                        Copy URL
+                      </Button>
+                    </div>
+                  </div>
 
-                    <Select value={responseStepId} onValueChange={setResponseStepId}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Default (Last Executed Step Output)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DEFAULT_STEP_FALLBACK">
-                          Default (Last Executed Step Output)
-                        </SelectItem>
-                        {steps.map((step) => (
-                          <SelectItem key={step.stepId} value={step.stepId}>
-                            {step.name || step.stepId} ({step.type})
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4 sm:p-5">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 p-3">
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-2 text-sm font-semibold">
+                            <Lock className="size-3.5 text-amber-500" />
+                            Authentication
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Require a bearer token for secure access.
+                          </p>
+                        </div>
+                        <Switch checked={authentication} onCheckedChange={setAuthentication} />
+                      </div>
+
+                      <div className="h-px bg-border/70" />
+
+                      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 p-3">
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-2 text-sm font-semibold">
+                            <Sliders className="size-3.5 text-blue-500" />
+                            Rate Limiting
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Throttle excessive requests to keep traffic controlled.
+                          </p>
+                        </div>
+                        <Switch checked={rateLimit} onCheckedChange={setRateLimit} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4 sm:p-5">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-sm font-semibold">
+                          <ShieldCheck className="size-4 text-success" />
+                          Response Mapping
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Choose which step output should be returned from the API response.
+                        </p>
+                      </div>
+                      <Select value={responseStepId} onValueChange={setResponseStepId}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Default (Last Executed Step Output)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DEFAULT_STEP_FALLBACK">
+                            Default (Last Executed Step Output)
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          {steps.map((step) => (
+                            <SelectItem key={step.stepId} value={step.stepId}>
+                              {step.name || step.stepId} ({step.type})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  {/* Integration Docs */}
-                  <div className="space-y-4 pt-4 border-t">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <Code className="size-4 text-primary" />
-                      Integration Instructions
-                    </h4>
-
-                    {/* Quickstart Tabs */}
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4 sm:p-5">
                     <div className="space-y-4">
-                      {/* cURL */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-foreground flex items-center gap-1">
-                            cURL Integration
-                          </span>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-2 text-sm font-semibold">
+                            <Code className="size-4 text-primary" />
+                            Integration
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Copy a ready-to-use example for your preferred integration.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 rounded-full border border-border/70 bg-muted/40 p-1">
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-6 text-muted-foreground"
-                            onClick={() => handleCopy(curlCode, 'curl')}
+                            variant={activeIntegrationTab === 'curl' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveIntegrationTab('curl')}
                           >
-                            {copiedType === 'curl' ? (
-                              <Check className="size-3 text-success" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
+                            cURL
+                          </Button>
+                          <Button
+                            variant={activeIntegrationTab === 'javascript' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveIntegrationTab('javascript')}
+                          >
+                            JavaScript
+                          </Button>
+                          <Button
+                            variant={activeIntegrationTab === 'http' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveIntegrationTab('http')}
+                          >
+                            HTTP Workflow
                           </Button>
                         </div>
-                        <pre className="p-3 bg-muted text-[11px] font-mono rounded-lg overflow-x-auto text-foreground border leading-relaxed select-all">
-                          {curlCode}
-                        </pre>
                       </div>
 
-                      {/* Fetch */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-foreground">
-                            JavaScript Fetch
-                          </span>
+                      <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-medium text-foreground">{activeTitle}</span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-6 text-muted-foreground"
-                            onClick={() => handleCopy(fetchCode, 'fetch')}
+                            className="size-7 text-muted-foreground"
+                            onClick={() =>
+                              handleCopy(
+                                activeIntegrationTab === 'curl'
+                                  ? curlCode
+                                  : activeIntegrationTab === 'javascript'
+                                    ? fetchCode
+                                    : httpStepCode,
+                                activeIntegrationTab
+                              )
+                            }
                           >
-                            {copiedType === 'fetch' ? (
-                              <Check className="size-3 text-success" />
+                            {copiedType === activeIntegrationTab ? (
+                              <Check className="size-3.5 text-success" />
                             ) : (
-                              <Copy className="size-3" />
+                              <Copy className="size-3.5" />
                             )}
                           </Button>
                         </div>
-                        <pre className="p-3 bg-muted text-[11px] font-mono rounded-lg overflow-x-auto text-foreground border leading-relaxed select-all">
-                          {fetchCode}
-                        </pre>
-                      </div>
-
-                      {/* HTTP Step */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-foreground flex items-center gap-1">
-                            HTTP Step Setup (Calling from other Workflows)
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] scale-90 bg-muted text-muted-foreground border"
-                            >
-                              Internal Docker
-                            </Badge>
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-6 text-muted-foreground"
-                            onClick={() => handleCopy(httpStepCode, 'httpStep')}
-                          >
-                            {copiedType === 'httpStep' ? (
-                              <Check className="size-3 text-success" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Paste this configuration pattern into an **HTTP Request** step in your
-                          parent workflow to call this service programmatically.
-                        </p>
-                        <pre className="p-3 bg-muted text-[11px] font-mono rounded-lg overflow-x-auto text-foreground border leading-relaxed select-all">
-                          {httpStepCode}
+                        <pre className="overflow-x-auto rounded-lg border border-border/60 bg-background p-3 text-[11px] leading-relaxed text-foreground selection:bg-primary/20">
+                          {activeCode}
                         </pre>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-2.5">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {saving ? 'Saving...' : 'Save Settings'}
-          </Button>
+        <div className="sticky bottom-0 border-t border-border/70 bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
+          <div className="flex justify-end gap-2.5">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {saving ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
