@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Card } from '@/components/ui/card';
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
@@ -86,7 +86,8 @@ function TableRowSkeleton() {
 export default function TasksPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [workflowFilter, setWorkflowFilter] = useState(searchParams.get('workflow') ?? '');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -173,8 +174,9 @@ export default function TasksPage() {
   fetchWorkflows();
   }, [page]);
 
-  const filteredTasks = tasks.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()));
-
+  const workflowOptions = workflows.filter((workflow) =>
+    tasks.some((task) => task.workflowId === workflow._id)
+  );
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.name
       .toLowerCase()
@@ -244,17 +246,33 @@ export default function TasksPage() {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2 border-border/50 bg-card h-10" disabled>
-              <Filter className="size-4" />
-              Filters
-            </Button>
-            <Button variant="outline" className="gap-2 border-border/50 bg-card h-10" disabled>
-              <ArrowUpDown className="size-4" />
-              Sort
-            </Button>
+            <select
+              className="h-10 rounded-md border border-border/50 bg-card px-3 text-sm"
+              value={workflowFilter}
+              onChange={(e) => {
+                const value = e.target.value;
+                setWorkflowFilter(value);
+
+                const params = new URLSearchParams(searchParams.toString());
+
+                if (value) {
+                  params.set('workflow', value);
+                } else {
+                  params.delete('workflow');
+                }
+
+                router.push(`/tasks?${params.toString()}`);
+              }}
+            >
+              <option value="">All workflows</option>
+              {workflowOptions.map((workflow) => (
+                <option key={workflow._id} value={workflow._id}>
+                  {workflow.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-
         {/* Main Table Card */}
         <Card className="overflow-hidden bg-card/40 border-border/50 flex flex-col min-h-[500px]">
           {loading ? (
