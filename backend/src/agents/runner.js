@@ -380,16 +380,26 @@ async function runWorkerLoop() {
                     timestamp: new Date(),
                   };
 
-                  const isJoinCached =
-                    Array.isArray(task.stepResults) &&
-                    task.stepResults.some(
+                  // Re-fetch the latest persisted task state from the DB *inside*
+                  // the lock to avoid a stale-read false negative. The in-memory
+                  // `task.stepResults` is never updated after Task.findByIdAndUpdate
+                  // calls made by other workers, so checking it directly would allow
+                  // a second worker (arriving after lock release) to see the old
+                  // state and duplicate the join execution.
+                  const freshTask = await Task.findById(task._id)
+                    .select('stepResults')
+                    .lean();
+
+                  const isJoinAlreadyPersisted =
+                    Array.isArray(freshTask?.stepResults) &&
+                    freshTask.stepResults.some(
                       (r) => r && r.stepId === joinNodeId && r.type === 'join'
                     );
 
-                  if (!isJoinCached) {
+                  if (!isJoinAlreadyPersisted) {
                     await Task.findByIdAndUpdate(task._id, { $push: { stepResults: joinResult } });
+                    branchContext.results.push(joinResult);
                   }
-                  branchContext.results.push(joinResult);
 
                   const nextEdge = getNextEdge(joinNode, joinResult);
                   if (!nextEdge) {

@@ -1,18 +1,16 @@
 class RetrievalManager {
-  constructor(strategyRegistry) {
+  constructor(strategyRegistry, strategySelector) {
     this.strategyRegistry = strategyRegistry;
+    this.strategySelector = strategySelector;
   }
-  selectStrategy(agent, userId, documentIds, query) {
-        // Placeholder for future intelligent strategy selection.
-        return "hybrid";
-    }
   async retrieve(agent, userId, documentIds, query, topK = 3) {
-    const strategyName = this.selectStrategy(
-            agent,
-            userId,
-            documentIds,
-            query
-        );
+    const strategyName =
+      await this.strategySelector.selectStrategy(
+          agent,
+          userId,
+          documentIds,
+          query
+      );
 
         const strategy = this.strategyRegistry.get(strategyName);
 

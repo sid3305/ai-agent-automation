@@ -13,7 +13,7 @@ export function AnalyticsSection({ stats, loading }: AnalyticsSectionProps) {
   const hasData = chartData && chartData.length > 0;
 
   return (
-    <div className="w-full mb-6">
+    <div className="w-full">
       
       {/* Execution Trend Chart Card */}
       <Card className="p-5 sm:p-6 border-border/15 bg-card/20 shadow-sm rounded-xl flex flex-col min-h-[350px]">

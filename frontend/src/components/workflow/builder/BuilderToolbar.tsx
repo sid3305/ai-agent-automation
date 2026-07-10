@@ -13,12 +13,12 @@ import {
   GitMerge,
   CheckSquare,
   PenTool,
-  Plus,
 } from 'lucide-react';
 
 interface BuilderToolbarProps {
   nodeDefinitions: NodeDefinition[];
   onAddNode: (type: string, def?: NodeDefinition) => void;
+  onQuickAdd?: () => void;
 }
 
 function getIconForType(type: string) {
@@ -51,7 +51,7 @@ function getIconForType(type: string) {
   }
 }
 
-export function BuilderToolbar({ nodeDefinitions, onAddNode }: BuilderToolbarProps) {
+export function BuilderToolbar({ nodeDefinitions, onAddNode, onQuickAdd }: BuilderToolbarProps) {
   if (!nodeDefinitions || nodeDefinitions.length === 0) {
     return null;
   }
@@ -85,6 +85,22 @@ export function BuilderToolbar({ nodeDefinitions, onAddNode }: BuilderToolbarPro
           </Tooltip>
         ))}
       </div>
+      {onQuickAdd && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-center rounded-xl text-xs font-semibold mt-1 gap-1.5"
+              onClick={onQuickAdd}
+            >
+              <span>⌘K</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            Quick Add (⌘K)
+          </TooltipContent>
+        </Tooltip>
+      )}
     </Card>
   );
 }

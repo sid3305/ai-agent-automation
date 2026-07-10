@@ -9,6 +9,7 @@ import ReactFlow, {
   useNodesState,
   applyNodeChanges,
   applyEdgeChanges,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
@@ -20,6 +21,7 @@ import { getAgents } from '@/lib/api';
 import type { WorkflowAgent } from '@/types/workflow';
 import { useParams } from 'next/navigation';
 import ReplayDialog from './replay-dialog';
+import { QuickAddPalette } from './quick-add-palette';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { BuilderToolbar } from './builder/BuilderToolbar';
 import { InspectorPanel } from './builder/InspectorPanel';
@@ -149,6 +151,7 @@ export default function VisualBuilder({
   nodeDefinitions?: NodeDefinition[];
 }) {
   usePerformanceMonitor('VisualBuilder');
+  const { screenToFlowPosition } = useReactFlow();
   const { id: workflowId } = useParams<{ id: string }>();
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [replayNodeId, setReplayNodeId] = useState<string>('');
@@ -158,8 +161,9 @@ export default function VisualBuilder({
   const futureRef = useRef<{ steps: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
   const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
-  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [flowEdges, setFlowEdges] = useState<Edge[]>(() => (edges as unknown as Edge[]) || []);
   const [agents, setAgents] = useState<WorkflowAgent[]>([]);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
   const selectedMcpTool = mcpTools.find(
     (tool) => tool.serverId === selectedStep?.serverId && tool.name === selectedStep?.toolName
@@ -382,6 +386,12 @@ export default function VisualBuilder({
         return;
       }
 
+      if (isMod && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
       if (e.key === 'Delete' && selectedNode) {
         e.preventDefault();
         deleteNode(selectedNode.id);
@@ -391,7 +401,7 @@ export default function VisualBuilder({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSave, selectedNode, steps, flowEdges, deleteNode, setSteps, pushEdgesToParent]);
+  }, [onSave, selectedNode, steps, flowEdges, deleteNode, setSteps, pushEdgesToParent, setCommandPaletteOpen]);
 
   /* ---------- EVENTS ---------- */
 
@@ -702,7 +712,11 @@ export default function VisualBuilder({
       ref={wrapperRef}
       className="flex flex-col flex-1 w-full h-[calc(100vh-220px)] min-h-[600px] relative overflow-hidden bg-background border rounded-lg"
     >
-      <BuilderToolbar nodeDefinitions={nodeDefinitions || []} onAddNode={addNode} />
+      <BuilderToolbar
+        nodeDefinitions={nodeDefinitions || []}
+        onAddNode={addNode}
+        onQuickAdd={() => setCommandPaletteOpen(true)}
+      />
 
       <ReactFlow
         className="flex-1"
@@ -739,20 +753,125 @@ export default function VisualBuilder({
         />
       </ReactFlow>
 
+      {/* Command-K "Quick-Add" Palette Modal */}
+      <QuickAddPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        nodeDefinitions={nodeDefinitions}
+        onSelectNode={(nodeType) => {
+          // Determine placement: relative to last selected node, or center of view
+          let placementX = 0;
+          let placementY = 0;
+
+          if (selectedNode && selectedNode.position) {
+            placementX = selectedNode.position.x + 280; // place to the right
+            placementY = selectedNode.position.y;
+          } else if (nodes.length > 0) {
+            // Place next to the last node
+            const lastNode = nodes[nodes.length - 1];
+            placementX = lastNode.position.x + 280;
+            placementY = lastNode.position.y;
+          } else {
+            // Place at the center of the React Flow viewport
+            const flowWrapper = document.querySelector('.react-flow');
+            if (flowWrapper) {
+              const rect = flowWrapper.getBoundingClientRect();
+              const flowCenter = screenToFlowPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+              });
+              placementX = flowCenter.x - 120; // Offset half node width (240px)
+              placementY = flowCenter.y - 40; // Offset approximate half height
+            } else {
+              placementX = 250;
+              placementY = 250;
+            }
+          }
+
+          const id = generateNodeId(nodeType.toLowerCase());
+
+          // Match custom field default values from definition
+          const matchingDef = nodeDefinitions.find((def) => def.id === nodeType);
+          const defaultConfig: Record<string, unknown> = {};
+          if (matchingDef) {
+            matchingDef.fields.forEach((field) => {
+              if (field.default !== undefined) {
+                defaultConfig[field.name] = field.default;
+              }
+            });
+          }
+
+          const node: StepNode = {
+            id,
+            type: 'default',
+            position: { x: placementX, y: placementY },
+            data: {
+              label: (
+                <div className="flex items-center justify-between gap-2">
+                  <span>{matchingDef?.name || nodeType}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNode(id);
+                    }}
+                    className="text-red-500 hover:text-red-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ),
+            },
+            style: {
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: `1px solid ${getNodeColor(nodeType)}`,
+              background: 'var(--card)',
+              color: 'var(--foreground)',
+              fontSize: '14px',
+              fontWeight: 500,
+              minWidth: 240,
+              cursor: 'pointer',
+              maxWidth: 240,
+              textAlign: 'center' as const,
+              boxShadow: `0 0 0 1px ${getNodeColor(nodeType)}20, 0 2px 6px rgba(0,0,0,0.05)`,
+              touchAction: 'none',
+            },
+          };
+
+          historyRef.current.push({
+            steps: [...steps],
+            edges: [...flowEdges] as unknown as WorkflowEdge[],
+          });
+          futureRef.current = [];
+
+          setNodes((n) => [...n, node]);
+          setSteps((prev) => [
+            ...prev,
+            {
+              id,
+              name: matchingDef?.name || `New ${nodeType} Step`,
+              type: nodeType as StepType,
+              config: defaultConfig,
+            },
+          ]);
+
+          addToast({
+            type: 'success',
+            title: `Added "${matchingDef?.name || nodeType}" node`,
+          });
+        }}
+      />
+
       {/* Keyboard Shortcuts Hint */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur-sm border rounded-md shadow-sm p-3 text-xs text-muted-foreground pointer-events-none hidden md:block z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
-              ⌘/Ctrl
-            </kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">S</kbd>{' '}
             <span>Save</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
-              ⌘/Ctrl
-            </kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">D</kbd>{' '}
             <span>Duplicate</span>
           </div>
@@ -761,11 +880,13 @@ export default function VisualBuilder({
             <span>Delete</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
-              ⌘/Ctrl
-            </kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">Z</kbd>{' '}
             <span>Undo</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>{' '}
+            <span>Quick Add</span>
           </div>
         </div>
       </div>

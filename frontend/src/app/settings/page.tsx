@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 
 import { useTheme } from 'next-themes';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -14,7 +14,27 @@ import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 import { useAssistantContext } from '@/context/assistant-context';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronRightIcon, Key, Trash2, Copy, Check } from 'lucide-react';
+import {
+  ChevronRightIcon,
+  Key,
+  Trash2,
+  Copy,
+  Check,
+  Cpu,
+  Cloud,
+  Plug,
+  Activity,
+  Settings2,
+  Plus,
+  MonitorSmartphone,
+  Moon,
+  Sun,
+  Sparkles,
+  BookOpen,
+  KeyRound,
+  Server,
+  XCircle,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -24,6 +44,8 @@ import {
   DropdownMenuContent,
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { apiUrl } from '@/lib/api';
 
 /* -------------------------
@@ -274,7 +296,7 @@ export default function SettingsPage() {
         setApiKeys(data.keys || []);
       }
     } catch (err) {
-      console.error('Failed to fetch API keys:', err);
+      console.warn('Failed to fetch API keys:', err);
     } finally {
       setLoadingKeys(false);
     }
@@ -407,21 +429,25 @@ export default function SettingsPage() {
         setTheme(merged.ui.theme);
       }
     } catch (err) {
-      console.error('Failed to load settings', err);
+      console.warn('Failed to load settings', err);
     } finally {
       setLoading(false);
     }
   }
 
   async function loadEnv() {
-    const res = await fetch(apiUrl('/system/env'), {
-      headers: {
-        Authorization: 'Bearer ' + localStorage.getItem('token'),
-      },
-    });
+    try {
+      const res = await fetch(apiUrl('/system/env'), {
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
+        },
+      });
 
-    const data = await res.json();
-    if (data.ok) setEnv(data.env);
+      const data = await res.json();
+      if (data.ok) setEnv(data.env);
+    } catch (err) {
+      console.warn('Failed to load env', err);
+    }
   }
 
   async function loadTelemetry() {
@@ -436,7 +462,7 @@ export default function SettingsPage() {
         setTelemetry(data.telemetry);
       }
     } catch (err) {
-      console.error('Failed to load telemetry', err);
+      console.warn('Failed to load telemetry', err);
     }
   }
 
@@ -610,477 +636,762 @@ export default function SettingsPage() {
 
   if (loading) return <p className="p-8">Loading…</p>;
 
+  // helper to get connected providers count
+  const activeProvidersCount = [env?.groq, env?.ollama, env?.openai, env?.gemini, env?.hf].filter(
+    Boolean
+  ).length;
+
+  // Active MCP servers
+  const activeMcpCount = settings.mcp.servers.filter((s) => s.enabled).length;
+
   return (
     <AuthenticatedLayout>
-      <>
-              <h1 className="text-3xl font-bold mb-2">Settings</h1>
-              <p className="mb-8 text-muted-foreground">Manage your system preferences</p>
+      <div className="max-w-6xl mx-auto space-y-8 pb-16">
+        {/* Header section */}
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Settings2 className="size-8 text-primary" />
+            System Control Center
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Configure your AI Workbench components, integrations, and telemetry.
+          </p>
+        </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 items-start">
-                {/* Worker */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 flex flex-col">
-                    <div className="space-y-4 flex-1">
-                      <h2 className="text-lg font-semibold">Worker</h2>
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4 bg-card/40 backdrop-blur-md border-white/10 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Cpu className="size-4" />
+              <span className="text-sm font-medium">Execution Engine</span>
+            </div>
+            <div className="text-2xl font-semibold flex items-center gap-2">
+              <div className="size-2.5 rounded-full bg-emerald-500" />
+              Active
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {settings.worker.pollIntervalMs}ms poll interval
+            </div>
+          </Card>
 
-                      <div>
-                        <Label>Poll Interval (ms)</Label>
-                        <Input
-                          type="number"
-                          value={settings.worker.pollIntervalMs}
-                          onChange={(e) =>
-                            setSettings({
-                              ...settings,
-                              worker: {
-                                ...settings.worker,
-                                pollIntervalMs: Number(e.target.value),
-                              },
-                            })
-                          }
-                        />
+          <Card className="p-4 bg-card/40 backdrop-blur-md border-white/10 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Cloud className="size-4" />
+              <span className="text-sm font-medium">API Providers</span>
+            </div>
+            <div className="text-2xl font-semibold flex items-center gap-2">
+              <div
+                className={`size-2.5 rounded-full ${activeProvidersCount > 0 ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
+              />
+              {activeProvidersCount} Connected
+            </div>
+            <div className="text-xs text-muted-foreground">Ready for tasks</div>
+          </Card>
+
+          <Card className="p-4 bg-card/40 backdrop-blur-md border-white/10 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Plug className="size-4" />
+              <span className="text-sm font-medium">MCP Servers</span>
+            </div>
+            <div className="text-2xl font-semibold flex items-center gap-2">
+              <div
+                className={`size-2.5 rounded-full ${settings.mcp.enabled ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
+              />
+              {activeMcpCount} Active
+            </div>
+            <div className="text-xs text-muted-foreground">Local tools & integrations</div>
+          </Card>
+
+          <Card className="p-4 bg-card/40 backdrop-blur-md border-white/10 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Activity className="size-4" />
+              <span className="text-sm font-medium">Telemetry</span>
+            </div>
+            <div className="text-2xl font-semibold flex items-center gap-2">
+              <div
+                className={`size-2.5 rounded-full ${telemetry.enabled ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
+              />
+              {telemetry.enabled ? 'Online' : 'Disabled'}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {telemetry.localMetrics.workflowExecutions} executions
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Provider Configuration */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 overflow-hidden">
+                <div className="p-6 border-b border-white/5">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Cloud className="size-5 text-primary" />
+                    Provider Configuration
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage AI model providers and authenticate outbound requests. Secrets are
+                    managed via environment variables.
+                  </p>
+                </div>
+
+                <div className="p-0">
+                  <div className="divide-y divide-white/5">
+                    {[
+                      { id: 'openai', name: 'OpenAI', icon: 'OpenAI', active: env?.openai },
+                      { id: 'gemini', name: 'Gemini', icon: 'Gemini', active: env?.gemini },
+                      { id: 'groq', name: 'Groq', icon: 'Groq', active: env?.groq },
+                      { id: 'ollama', name: 'Ollama (Local)', icon: 'Ollama', active: env?.ollama },
+                      { id: 'hf', name: 'Hugging Face', icon: 'HF', active: env?.hf },
+                    ].map((provider) => (
+                      <div
+                        key={provider.id}
+                        className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-muted flex items-center justify-center font-bold text-muted-foreground">
+                            {provider.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-medium">{provider.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {provider.active
+                                ? 'Environment variable found'
+                                : 'Missing environment variable'}
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          {provider.active ? (
+                            <Badge
+                              variant="default"
+                              className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                            >
+                              Connected ✓
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              <span className="flex items-center text-destructive">
+                                Not Configured <XCircle className="w-4 h-4 ml-1" />
+                              </span>
+                            </Badge>
+                          )}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      <div>
-                        <Label>Max Attempts</Label>
-                        <Input
-                          type="number"
-                          value={settings.worker.maxAttempts}
-                          onChange={(e) =>
-                            setSettings({
-                              ...settings,
-                              worker: {
-                                ...settings.worker,
-                                maxAttempts: Number(e.target.value),
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
+                <div className="p-6 bg-muted/5 border-t border-white/5 space-y-4">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <KeyRound className="size-4" />
+                    API Keys
+                  </h3>
 
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Key name (e.g. My App)"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      className="max-w-xs bg-background/50"
+                    />
                     <Button
-                      onClick={saveWorkerSettings}
-                      disabled={savingWorker}
-                      className="w-full md:w-auto"
+                      onClick={handleGenerateKey}
+                      disabled={generatingKey || !newKeyName.trim()}
                     >
-                      {savingWorker ? 'Saving…' : 'Save'}
+                      Generate Key
                     </Button>
-                  </Card>
-                </motion.div>
+                  </div>
 
-                {/* Environment */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 space-y-4">
-                    <h2 className="text-lg font-semibold">Environment</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Secrets are managed via environment variables.
-                    </p>
-
-                    {env && (
-                      <div className="space-y-1 text-sm">
-                        <div>Groq API: {env.groq ? '✅' : '❌'}</div>
-                        <div>Ollama API: {env.ollama ? '✅' : '❌'}</div>
-                        <div>OpenAI API: {env.openai ? '✅' : '❌'}</div>
-                        <div>Gemini API: {env.gemini ? '✅' : '❌'}</div>
-                        <div>HF API: {env.hf ? '✅' : '❌'}</div>
-                      </div>
-                    )}
-                  </Card>
-                </motion.div>
-
-                {/* API Keys */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 space-y-4">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                      <Key className="size-5 text-primary" />
-                      API Keys
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Generate keys to authenticate requests when calling published workflow
-                      endpoints.
-                    </p>
-
-                    {/* Key generation form */}
-                    <div className="space-y-2.5">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Key name (e.g. My App)"
-                          value={newKeyName}
-                          onChange={(e) => setNewKeyName(e.target.value)}
-                        />
+                  {generatedKey && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg space-y-2 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="text-xs font-semibold text-emerald-500 flex justify-between items-center">
+                        <span>Save this key (it won&apos;t be shown again!):</span>
                         <Button
-                          onClick={handleGenerateKey}
-                          disabled={generatingKey || !newKeyName.trim()}
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 text-emerald-500 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedKey);
+                            setCopiedKey(true);
+                            setTimeout(() => setCopiedKey(false), 2000);
+                          }}
                         >
-                          Generate
+                          {copiedKey ? (
+                            <Check className="size-3.5" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
                         </Button>
                       </div>
+                      <div className="font-mono text-xs break-all bg-background border p-2 rounded select-all text-foreground">
+                        {generatedKey}
+                      </div>
                     </div>
+                  )}
 
-                    {/* Success dialog */}
-                    {generatedKey && (
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg space-y-2 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="text-xs font-semibold text-emerald-500 flex justify-between items-center">
-                          <span>Save this key (it won&apos;t be shown again!):</span>
+                  {loadingKeys ? (
+                    <p className="text-xs text-muted-foreground animate-pulse">Loading keys...</p>
+                  ) : apiKeys.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">No API keys created yet.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {apiKeys.map((key) => (
+                        <div
+                          key={key._id}
+                          className="flex items-center justify-between border border-white/10 p-2.5 rounded-lg bg-background/50 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate text-foreground">{key.name}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Created: {new Date(key.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-6 text-emerald-500 hover:bg-emerald-500/20"
-                            onClick={() => {
-                              navigator.clipboard.writeText(generatedKey);
-                              setCopiedKey(true);
-                              setTimeout(() => setCopiedKey(false), 2000);
-                            }}
+                            className="size-7 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRevokeKey(key._id)}
                           >
-                            {copiedKey ? (
-                              <Check className="size-3.5" />
-                            ) : (
-                              <Copy className="size-3.5" />
-                            )}
+                            <Trash2 className="size-3.5" />
                           </Button>
                         </div>
-                        <div className="font-mono text-xs break-all bg-background border p-2 rounded select-all text-foreground">
-                          {generatedKey}
-                        </div>
-                      </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Developer Integrations (MCP) */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <Server className="size-5 text-primary" />
+                      Developer Integrations
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Model Context Protocol (MCP) servers for local tools and system integrations.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">Master Toggle</span>
+                      <Switch
+                        checked={!!settings.mcp.enabled}
+                        onCheckedChange={(checked) =>
+                          setSettings((prev) => ({
+                            ...prev,
+                            mcp: { ...prev.mcp, enabled: checked },
+                          }))
+                        }
+                      />
+                    </div>
+                    {mcpRuntime.envEnabled ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]"
+                      >
+                        Environment: Enabled
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px]">
+                        Environment: Disabled
+                      </Badge>
                     )}
+                  </div>
+                </div>
 
-                    {/* API keys list */}
-                    <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                      {loadingKeys ? (
-                        <p className="text-xs text-muted-foreground animate-pulse">
-                          Loading keys...
-                        </p>
-                      ) : apiKeys.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">
-                          No API keys created yet.
-                        </p>
-                      ) : (
-                        apiKeys.map((key) => (
-                          <div
-                            key={key._id}
-                            className="flex items-center justify-between border p-2.5 rounded-lg bg-muted/10 text-xs"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-semibold truncate text-foreground">{key.name}</p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                Created: {new Date(key.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-7 text-destructive hover:bg-destructive/10"
-                              onClick={() => handleRevokeKey(key._id)}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={addMcpServer} className="gap-2">
+                    <Plus className="size-4" /> Add Server
+                  </Button>
+                  <Button type="button" onClick={saveMcpSettings} disabled={savingMcp}>
+                    {savingMcp ? 'Saving…' : 'Save MCP Settings'}
+                  </Button>
+                </div>
+
+                {settings.mcp.servers.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-3 bg-muted/5">
+                    <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                      <Plug className="size-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">No MCP servers connected</h3>
+                      <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                        Add a local tool integration to extend your agents with custom capabilities.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {settings.mcp.servers.map((server) => (
+                      <div
+                        key={server.id}
+                        className="rounded-xl border border-white/10 p-5 space-y-4 bg-background/50 relative group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={server.enabled}
+                              onCheckedChange={(checked) =>
+                                updateMcpServer(server.id, { enabled: checked })
+                              }
+                            />
+                            <div className="font-medium text-base">{server.name || server.id}</div>
+                            <Badge variant="secondary" className="text-[10px]">
+                              {server.transport}
+                            </Badge>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                </motion.div>
-
-                {/* Appearance */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6">
-                    <h2 className="mb-4 text-lg font-semibold">Appearance</h2>
-
-                    <RadioGroup value={theme} onValueChange={changeTheme} className="space-y-3">
-                      <ThemeOption value="light" label="Light" />
-                      <ThemeOption value="dark" label="Dark" />
-                      <ThemeOption value="midnight" label="Midnight" />
-                      <ThemeOption value="solarized" label="Solarized" />
-                      <ThemeOption value="system" label="System" />
-                    </RadioGroup>
-                  </Card>
-                </motion.div>
-                {/* AI Assistance */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 space-y-4">
-                    <h2 className="text-lg font-semibold">AI Assistance</h2>
-
-                    <p className="text-sm text-muted-foreground">
-                      Select which LLM provider should power in-app assistant.
-                    </p>
-
-                    {/* Enable Switch */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Enable AI Assistant</div>
-                        <div className="text-xs text-muted-foreground">
-                          Must select provider below
-                        </div>
-                      </div>
-
-                      <Switch
-                        checked={!!settings.assistant?.enabled}
-                        disabled={!settings.assistant?.provider}
-                        onCheckedChange={async (checked) => {
-                          const updated = {
-                            ...settings,
-                            assistant: {
-                              ...settings.assistant,
-                              enabled: checked,
-                            },
-                          };
-
-                          setSettings(updated);
-
-                          await fetch(apiUrl('/settings'), {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: 'Bearer ' + localStorage.getItem('token'),
-                            },
-                            body: JSON.stringify({
-                              assistant: updated.assistant,
-                            }),
-                          });
-                        }}
-                      />
-                    </div>
-
-                    {/* Provider Select */}
-                    <div>
-                      <Label className="mb-2 block">Provider</Label>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="w-full border rounded-md px-3 py-2 bg-background text-left flex items-center justify-between">
-                            <span>
-                              {settings.assistant?.provider
-                                ? PROVIDER_LABELS[settings.assistant.provider as AssistantProvider]
-                                : 'Select Provider'}
-                            </span>
-                            <ChevronRightIcon className="rotate-90 size-4 opacity-60" />
-                          </button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent className="w-56">
-                          <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuRadioGroup
-                            value={settings.assistant?.provider ?? ''}
-                            onValueChange={async (value) => {
-                              const provider: AssistantProvider | null =
-                                value === '' ? null : (value as AssistantProvider);
-
-                              const updated = {
-                                ...settings,
-                                assistant: {
-                                  ...settings.assistant,
-                                  provider,
-                                },
-                              };
-
-                              setSettings(updated);
-
-                              await fetch(apiUrl('/settings'), {
-                                method: 'PUT',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  Authorization: 'Bearer ' + localStorage.getItem('token'),
-                                },
-                                body: JSON.stringify({
-                                  assistant: updated.assistant,
-                                }),
-                              });
-                            }}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeMcpServer(server.id)}
                           >
-                            {Object.entries(availableProviders).map(
-                              ([key, available]) =>
-                                available && (
-                                  <DropdownMenuRadioItem key={key} value={key}>
-                                    {PROVIDER_LABELS[key as AssistantProvider]}
-                                  </DropdownMenuRadioItem>
-                                )
-                            )}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Model Input */}
-                    <div>
-                      <Label className="mb-2 block">Model (Optional Override)</Label>
-                      <Input
-                        placeholder="Leave empty for default"
-                        value={settings.assistant?.model ?? ''}
-                        onChange={(e) =>
-                          setSettings((prev) => ({
-                            ...prev,
-                            assistant: {
-                              ...prev.assistant,
-                              model: e.target.value || null,
-                            },
-                          }))
-                        }
-                        onBlur={async () => {
-                          await fetch(apiUrl('/settings'), {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: 'Bearer ' + localStorage.getItem('token'),
-                            },
-                            body: JSON.stringify({
-                              assistant: settings.assistant,
-                            }),
-                          });
-                        }}
-                      />
-                    </div>
-                  </Card>
-                </motion.div>
-                {/* Document Chat */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 space-y-4">
-                    <h2 className="text-lg font-semibold">Document Chat</h2>
-
-                    <p className="text-sm text-muted-foreground">
-                      Configure AI used for document question answering.
-                    </p>
-
-                    {/* Enable Switch */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Enable Document Chat</div>
-                        <div className="text-xs text-muted-foreground">
-                          Must select provider below
+                            <Trash2 className="size-4" />
+                          </Button>
                         </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">ID</Label>
+                            <Input
+                              className="bg-background/50 h-8"
+                              value={server.id}
+                              onChange={(e) => updateMcpServer(server.id, { id: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Name</Label>
+                            <Input
+                              className="bg-background/50 h-8"
+                              value={server.name}
+                              onChange={(e) => updateMcpServer(server.id, { name: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Transport</Label>
+                            <select
+                              className="w-full h-8 border rounded-md px-3 bg-background/50 text-sm"
+                              value={server.transport}
+                              onChange={(e) =>
+                                updateMcpServer(server.id, {
+                                  transport: e.target.value as 'stdio' | 'streamable-http',
+                                })
+                              }
+                            >
+                              <option value="stdio">stdio</option>
+                              <option value="streamable-http">streamable-http</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Timeout (ms)</Label>
+                            <Input
+                              type="number"
+                              className="bg-background/50 h-8"
+                              value={server.timeoutMs}
+                              onChange={(e) =>
+                                updateMcpServer(server.id, { timeoutMs: Number(e.target.value) })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {server.transport === 'stdio' ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">Command</Label>
+                              <Input
+                                className="bg-background/50 h-8"
+                                value={server.command}
+                                onChange={(e) =>
+                                  updateMcpServer(server.id, { command: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                Args (space-separated)
+                              </Label>
+                              <Input
+                                className="bg-background/50 h-8"
+                                value={server.args.join(' ')}
+                                onChange={(e) =>
+                                  updateMcpServer(server.id, {
+                                    args: e.target.value
+                                      .split(' ')
+                                      .map((item) => item.trim())
+                                      .filter(Boolean),
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">URL</Label>
+                            <Input
+                              className="bg-background/50 h-8"
+                              value={server.url}
+                              onChange={(e) => updateMcpServer(server.id, { url: e.target.value })}
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Headers (Key=Value)
+                            </Label>
+                            <textarea
+                              className="w-full min-h-[80px] border rounded-md px-3 py-2 bg-background/50 font-mono text-xs"
+                              value={toKeyValueText(server.headers)}
+                              onChange={(e) =>
+                                updateMcpServer(server.id, {
+                                  headers: fromKeyValueText(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Environment (Key=Value)
+                            </Label>
+                            <textarea
+                              className="w-full min-h-[80px] border rounded-md px-3 py-2 bg-background/50 font-mono text-xs"
+                              value={toKeyValueText(server.env)}
+                              onChange={(e) =>
+                                updateMcpServer(server.id, {
+                                  env: fromKeyValueText(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <label className="flex items-center gap-2 text-sm mt-2 cursor-pointer w-fit">
+                          <input
+                            type="checkbox"
+                            checked={server.autoDiscover}
+                            onChange={(e) =>
+                              updateMcpServer(server.id, { autoDiscover: e.target.checked })
+                            }
+                            className="rounded border-white/20 bg-background"
+                          />
+                          <span className="text-muted-foreground">Auto-discover tools</span>
+                        </label>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          </div>
 
-                      <Switch
-                        checked={!!settings.documentChat?.enabled}
-                        disabled={!settings.documentChat?.provider}
-                        onCheckedChange={async (checked) => {
-                          const updated = {
-                            ...settings,
-                            documentChat: {
-                              ...settings.documentChat,
-                              enabled: checked,
-                            },
-                          };
+          {/* Right Column: Settings */}
+          <div className="space-y-8">
+            {/* Execution Engine */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Cpu className="size-5 text-primary" />
+                    Execution Engine
+                  </h2>
+                  <Button size="sm" onClick={saveWorkerSettings} disabled={savingWorker}>
+                    {savingWorker ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
 
-                          setSettings(updated);
-
-                          await fetch(apiUrl('/settings'), {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: 'Bearer ' + localStorage.getItem('token'),
-                            },
-                            body: JSON.stringify({
-                              documentChat: updated.documentChat,
-                            }),
-                          });
-                        }}
-                      />
+                <div className="space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Poll Interval</Label>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {settings.worker.pollIntervalMs}ms
+                      </span>
                     </div>
+                    <input
+                      type="range"
+                      min="500"
+                      max="10000"
+                      step="500"
+                      className="w-full accent-primary"
+                      value={settings.worker.pollIntervalMs}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          worker: { ...settings.worker, pollIntervalMs: Number(e.target.value) },
+                        })
+                      }
+                    />
+                  </div>
 
-                    {/* Provider Select */}
-                    <div>
-                      <Label className="mb-2 block">Provider</Label>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="w-full border rounded-md px-3 py-2 bg-background text-left flex items-center justify-between">
-                            <span>
-                              {settings.documentChat?.provider
-                                ? PROVIDER_LABELS[
-                                    settings.documentChat.provider as AssistantProvider
-                                  ]
-                                : 'Select Provider'}
-                            </span>
-
-                            <ChevronRightIcon className="rotate-90 size-4 opacity-60" />
-                          </button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent className="w-56">
-                          <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuRadioGroup
-                            value={settings.documentChat?.provider ?? ''}
-                            onValueChange={async (value) => {
-                              const provider: AssistantProvider | null =
-                                value === '' ? null : (value as AssistantProvider);
-
-                              const updated = {
-                                ...settings,
-                                documentChat: {
-                                  ...settings.documentChat,
-                                  provider,
-                                },
-                              };
-
-                              setSettings(updated);
-
-                              await fetch(apiUrl('/settings'), {
-                                method: 'PUT',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  Authorization: 'Bearer ' + localStorage.getItem('token'),
-                                },
-                                body: JSON.stringify({
-                                  documentChat: updated.documentChat,
-                                }),
-                              });
-                            }}
-                          >
-                            {Object.entries(availableProviders).map(
-                              ([key, available]) =>
-                                available && (
-                                  <DropdownMenuRadioItem key={key} value={key}>
-                                    {PROVIDER_LABELS[key as AssistantProvider]}
-                                  </DropdownMenuRadioItem>
-                                )
-                            )}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Max Attempts</Label>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {settings.worker.maxAttempts}
+                      </span>
                     </div>
-
-                    {/* Model Input */}
-                    <div>
-                      <Label className="mb-2 block">Model (Optional Override)</Label>
-
-                      <Input
-                        placeholder="Leave empty for default"
-                        value={settings.documentChat?.model ?? ''}
-                        onChange={(e) =>
-                          setSettings((prev) => ({
-                            ...prev,
-                            documentChat: {
-                              ...prev.documentChat,
-                              model: e.target.value || null,
-                            },
-                          }))
-                        }
-                        onBlur={async () => {
-                          await fetch(apiUrl('/settings'), {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: 'Bearer ' + localStorage.getItem('token'),
-                            },
-                            body: JSON.stringify({
-                              documentChat: settings.documentChat,
-                            }),
-                          });
-                        }}
-                      />
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() =>
+                            setSettings({
+                              ...settings,
+                              worker: { ...settings.worker, maxAttempts: i + 1 },
+                            })
+                          }
+                          className={`size-3 rounded-full transition-colors ${i < settings.worker.maxAttempts ? 'bg-primary' : 'bg-muted hover:bg-muted-foreground/30'}`}
+                          title={`Set max attempts to ${i + 1}`}
+                        />
+                      ))}
                     </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
 
-                    {/* Top-K */}
-                    <div>
-                      <Label>Top-K Retrieval</Label>
+            {/* AI Runtime Config */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Sparkles className="size-5 text-primary" />
+                    AI Runtime Config
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Configure the in-app assistant model.
+                  </p>
+                </div>
 
-                      <Input
-                        type="number"
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between border border-white/5 bg-background/50 p-3 rounded-lg">
+                    <div className="font-medium text-sm">Assistant Status</div>
+                    <Switch
+                      checked={!!settings.assistant?.enabled}
+                      disabled={!settings.assistant?.provider}
+                      onCheckedChange={async (checked) => {
+                        const updated = {
+                          ...settings,
+                          assistant: { ...settings.assistant, enabled: checked },
+                        };
+                        setSettings(updated);
+                        await fetch(apiUrl('/settings'), {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + localStorage.getItem('token'),
+                          },
+                          body: JSON.stringify({ assistant: updated.assistant }),
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Provider</Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="w-full border border-white/10 rounded-md px-3 py-2 bg-background/50 text-left flex items-center justify-between text-sm">
+                          <span>
+                            {settings.assistant?.provider
+                              ? PROVIDER_LABELS[settings.assistant.provider as AssistantProvider]
+                              : 'Select Provider'}
+                          </span>
+                          <ChevronRightIcon className="rotate-90 size-4 opacity-60" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56">
+                        <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={settings.assistant?.provider ?? ''}
+                          onValueChange={async (value) => {
+                            const provider: AssistantProvider | null =
+                              value === '' ? null : (value as AssistantProvider);
+                            const updated = {
+                              ...settings,
+                              assistant: { ...settings.assistant, provider },
+                            };
+                            setSettings(updated);
+                            await fetch(apiUrl('/settings'), {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: 'Bearer ' + localStorage.getItem('token'),
+                              },
+                              body: JSON.stringify({ assistant: updated.assistant }),
+                            });
+                          }}
+                        >
+                          {Object.entries(availableProviders).map(
+                            ([key, available]) =>
+                              available && (
+                                <DropdownMenuRadioItem key={key} value={key}>
+                                  {PROVIDER_LABELS[key as AssistantProvider]}
+                                </DropdownMenuRadioItem>
+                              )
+                          )}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Model Override</Label>
+                    <Input
+                      className="bg-background/50 h-9 text-sm"
+                      placeholder="Default"
+                      value={settings.assistant?.model ?? ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          assistant: { ...prev.assistant, model: e.target.value || null },
+                        }))
+                      }
+                      onBlur={async () => {
+                        await fetch(apiUrl('/settings'), {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + localStorage.getItem('token'),
+                          },
+                          body: JSON.stringify({ assistant: settings.assistant }),
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Knowledge Assistant */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <BookOpen className="size-5 text-primary" />
+                    Knowledge Assistant
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Configure Document Chat RAG pipeline.
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between border border-white/5 bg-background/50 p-3 rounded-lg">
+                    <div className="font-medium text-sm">Document Chat</div>
+                    <Switch
+                      checked={!!settings.documentChat?.enabled}
+                      disabled={!settings.documentChat?.provider}
+                      onCheckedChange={async (checked) => {
+                        const updated = {
+                          ...settings,
+                          documentChat: { ...settings.documentChat, enabled: checked },
+                        };
+                        setSettings(updated);
+                        await fetch(apiUrl('/settings'), {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + localStorage.getItem('token'),
+                          },
+                          body: JSON.stringify({ documentChat: updated.documentChat }),
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Provider</Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="w-full border border-white/10 rounded-md px-3 py-2 bg-background/50 text-left flex items-center justify-between text-sm">
+                          <span>
+                            {settings.documentChat?.provider
+                              ? PROVIDER_LABELS[settings.documentChat.provider as AssistantProvider]
+                              : 'Select Provider'}
+                          </span>
+                          <ChevronRightIcon className="rotate-90 size-4 opacity-60" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56">
+                        <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={settings.documentChat?.provider ?? ''}
+                          onValueChange={async (value) => {
+                            const provider: AssistantProvider | null =
+                              value === '' ? null : (value as AssistantProvider);
+                            const updated = {
+                              ...settings,
+                              documentChat: { ...settings.documentChat, provider },
+                            };
+                            setSettings(updated);
+                            await fetch(apiUrl('/settings'), {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: 'Bearer ' + localStorage.getItem('token'),
+                              },
+                              body: JSON.stringify({ documentChat: updated.documentChat }),
+                            });
+                          }}
+                        >
+                          {Object.entries(availableProviders).map(
+                            ([key, available]) =>
+                              available && (
+                                <DropdownMenuRadioItem key={key} value={key}>
+                                  {PROVIDER_LABELS[key as AssistantProvider]}
+                                </DropdownMenuRadioItem>
+                              )
+                          )}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Top-K Retrieval</Label>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {settings.documentChat.topK}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="1"
+                        className="w-full accent-primary"
                         value={settings.documentChat.topK}
                         onChange={(e) =>
                           setSettings({
@@ -1091,28 +1402,36 @@ export default function SettingsPage() {
                             },
                           })
                         }
-                        onBlur={async () => {
+                        onMouseUp={async () => {
                           await fetch(apiUrl('/settings'), {
                             method: 'PUT',
                             headers: {
                               'Content-Type': 'application/json',
                               Authorization: 'Bearer ' + localStorage.getItem('token'),
                             },
-                            body: JSON.stringify({
-                              documentChat: settings.documentChat,
-                            }),
+                            body: JSON.stringify({ documentChat: settings.documentChat }),
                           });
                         }}
                       />
+                      <div className="flex justify-between text-[10px] text-muted-foreground uppercase">
+                        <span>Shallow</span>
+                        <span>Deep Context</span>
+                      </div>
                     </div>
 
-                    {/* Temperature */}
-                    <div>
-                      <Label>Temperature</Label>
-
-                      <Input
-                        type="number"
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Temperature</Label>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {settings.documentChat.temperature.toFixed(1)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
                         step="0.1"
+                        className="w-full accent-primary"
                         value={settings.documentChat.temperature}
                         onChange={(e) =>
                           setSettings({
@@ -1123,306 +1442,235 @@ export default function SettingsPage() {
                             },
                           })
                         }
-                        onBlur={async () => {
+                        onMouseUp={async () => {
                           await fetch(apiUrl('/settings'), {
                             method: 'PUT',
                             headers: {
                               'Content-Type': 'application/json',
                               Authorization: 'Bearer ' + localStorage.getItem('token'),
                             },
-                            body: JSON.stringify({
-                              documentChat: settings.documentChat,
-                            }),
+                            body: JSON.stringify({ documentChat: settings.documentChat }),
                           });
                         }}
                       />
-                    </div>
-                  </Card>
-                </motion.div>
-
-                {/* Telemetry */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <Card className="p-6 space-y-4">
-                    <h2 className="text-lg font-semibold">Telemetry</h2>
-
-                    <p className="text-sm text-muted-foreground">
-                      Optional anonymous telemetry is local-first and opt-in. No prompts, documents,
-                      or user data are collected.
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Enable anonymous telemetry</div>
-                        <div className="text-xs text-muted-foreground">
-                          Use a random instance ID and minimal system metadata.
-                        </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground uppercase">
+                        <span>Cold</span>
+                        <span>Creative</span>
                       </div>
-                      <Switch checked={telemetry.enabled} onCheckedChange={saveTelemetryEnabled} />
                     </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+          {/* Split row for System Health & Theme Gallery */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start lg:col-span-3">
+            {/* System Health */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Activity className="size-5 text-primary" />
+                    System Health
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Optional anonymous telemetry is local-first and opt-in. No prompts, documents,
+                    or user data are collected.
+                  </p>
+                </div>
 
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        Instance ID:{' '}
-                        <span className="font-mono">
-                          {telemetry.instanceId || 'not generated yet'}
-                        </span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border border-white/5 bg-background/50 p-3 rounded-lg mb-4">
+                    <div>
+                      <div className="font-medium text-sm">Enable anonymous telemetry</div>
+                      <div className="text-xs text-muted-foreground">
+                        Use a random instance ID and minimal system metadata.
                       </div>
-                      <div>
-                        Heartbeat:{' '}
+                    </div>
+                    <Switch checked={telemetry.enabled} onCheckedChange={saveTelemetryEnabled} />
+                  </div>
+                  <div className="space-y-2 text-sm bg-background/30 p-3 border border-white/5 rounded-lg mb-4">
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-muted-foreground">Heartbeat</span>
+                      <span>
                         {telemetry.lastHeartbeatAt
                           ? new Date(telemetry.lastHeartbeatAt).toLocaleString()
                           : 'not sent yet'}
-                      </div>
-                      <div>Endpoint configured: {telemetry.endpointConfigured ? 'Yes' : 'No'}</div>
-                      <div>
-                        <div>Workflow executions: {telemetry.localMetrics.workflowExecutions}</div>
-                        <div>
-                          Average task duration:{' '}
-                          {telemetry.localMetrics.taskRuns > 0
-                            ? Math.round(
-                                telemetry.localMetrics.totalTaskDurationMs /
-                                  telemetry.localMetrics.taskRuns
-                              )
-                            : 0}{' '}
-                          ms
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                      <span className="text-muted-foreground">Endpoint Configured</span>
+                      <span>{telemetry.endpointConfigured ? 'Yes' : 'No'}</span>
+                    </div>
+                  </div>
+
+                  {!telemetry.localMetrics ||
+                  telemetry.localMetrics.workflowExecutions === undefined ? (
+                    <div className="text-sm text-muted-foreground italic text-center p-4">
+                      No telemetry data collected yet
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 border border-white/5 bg-background/30 rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Instance</div>
+                          <div className="font-mono text-xs truncate" title={telemetry.instanceId}>
+                            {telemetry.instanceId || '-'}
+                          </div>
                         </div>
-                        <div>Step executions: {telemetry.localMetrics.totalStepExecutions}</div>
-                        {Object.entries(telemetry.localMetrics.stepTypeCounts).length > 0 && (
-                          <div>
-                            Step type usage:
-                            <ul className="ml-4 list-disc">
-                              {Object.entries(telemetry.localMetrics.stepTypeCounts).map(
-                                ([type, count]) => (
-                                  <li key={type}>
-                                    {type}: {count}
-                                  </li>
+                        <div className="p-3 border border-white/5 bg-background/30 rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Avg Duration</div>
+                          <div className="font-mono text-sm">
+                            {telemetry.localMetrics.taskRuns > 0
+                              ? Math.round(
+                                  telemetry.localMetrics.totalTaskDurationMs /
+                                    telemetry.localMetrics.taskRuns
                                 )
-                              )}
-                            </ul>
+                              : 0}
+                            ms
+                          </div>
+                        </div>
+                        <div className="p-3 border border-white/5 bg-background/30 rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Executions</div>
+                          <div className="font-mono text-sm">
+                            {telemetry.localMetrics.workflowExecutions}
+                          </div>
+                        </div>
+                        <div className="p-3 border border-white/5 bg-background/30 rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Steps</div>
+                          <div className="font-mono text-sm">
+                            {telemetry.localMetrics.totalStepExecutions}
+                          </div>
+                        </div>
+                      </div>
+
+                      {Object.keys(telemetry.localMetrics.stepTypeCounts).length > 0 && (
+                        <div className="space-y-3 pt-2">
+                          <div className="text-sm font-medium">Step Type Usage</div>
+                          {Object.entries(telemetry.localMetrics.stepTypeCounts).map(
+                            ([type, count]) => {
+                              // Max value for simple relative bar width calculation
+                              const maxCount = Math.max(
+                                ...Object.values(telemetry.localMetrics.stepTypeCounts)
+                              );
+                              const percent = Math.round((count / maxCount) * 100);
+                              return (
+                                <div key={type} className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span>{type}</span>
+                                    <span className="font-mono">{count}</span>
+                                  </div>
+                                  <Progress value={percent} className="h-1.5" />
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Theme Gallery */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+            >
+              <Card className="bg-card/40 backdrop-blur-md border-white/10 p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MonitorSmartphone className="size-5 text-primary" />
+                    Theme Gallery
+                  </h2>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    { id: 'dark', name: 'Dark', description: 'Deep blacks and subtle grays.' },
+                    { id: 'light', name: 'Light', description: 'Clean, bright, and legible.' },
+                    {
+                      id: 'midnight',
+                      name: 'Midnight',
+                      description: 'Deep blue hues for night owls.',
+                    },
+                    {
+                      id: 'solarized',
+                      name: 'Solarized',
+                      description: 'Warm, low-contrast precision.',
+                    },
+                    {
+                      id: 'system',
+                      name: 'System',
+                      description: 'Matches your OS preferences automatically.',
+                    },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => changeTheme(t.id as UiTheme)}
+                      className={`w-full flex items-center gap-6 p-4 rounded-xl border transition-all text-left ${theme === t.id ? 'border-primary bg-primary/5' : 'border-white/10 bg-background/50 hover:bg-muted/50'}`}
+                    >
+                      {/* Mini Preview using dynamic CSS variables */}
+                      <div
+                        className={`w-32 h-20 shrink-0 rounded-md border border-white/10 overflow-hidden flex flex-col ${t.id === 'system' ? '' : t.id}`}
+                      >
+                        <div className="bg-background text-foreground flex-1 flex flex-col pointer-events-none">
+                          {/* Header */}
+                          <div className="h-4 border-b border-border/50 bg-card flex items-center px-2">
+                            <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+                          </div>
+                          {/* Body */}
+                          <div className="flex flex-1">
+                            {/* Sidebar */}
+                            <div className="w-7 border-r border-border/50 bg-muted/30 flex flex-col items-center py-1.5 space-y-1.5">
+                              <div className="w-3.5 h-3.5 rounded-sm bg-primary/40" />
+                              <div className="w-3 h-3 rounded-sm bg-foreground/10" />
+                              <div className="w-3 h-3 rounded-sm bg-foreground/10" />
+                            </div>
+                            {/* Content */}
+                            <div className="flex-1 p-2 space-y-1.5 flex flex-col bg-background/50">
+                              <div className="flex gap-1.5">
+                                <div className="h-5 flex-1 rounded bg-card border border-border/50 shadow-sm" />
+                                <div className="h-5 flex-1 rounded bg-card border border-border/50 shadow-sm" />
+                              </div>
+                              <div className="h-3.5 w-12 rounded bg-primary mt-auto" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info & Selection */}
+                      <div className="flex-1 flex items-center justify-between">
+                        <div>
+                          <div
+                            className={`font-medium ${theme === t.id ? 'text-primary' : 'text-foreground'}`}
+                          >
+                            {t.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {t.description}
+                          </div>
+                        </div>
+                        {theme === t.id && (
+                          <div className="h-6 w-6 shrink-0 rounded-full bg-primary/20 flex items-center justify-center ml-4">
+                            <Check className="size-3.5 text-primary" />
                           </div>
                         )}
                       </div>
-                    </div>
-                  </Card>
-                </motion.div>
-
-                {/* MCP */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="md:col-span-2 lg:col-span-3"
-                >
-                  <Card className="p-6 space-y-5">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <h2 className="text-lg font-semibold">MCP Servers</h2>
-                        <p className="text-sm text-muted-foreground">
-                          Configure local stdio and remote streamable HTTP MCP servers for workflow
-                          steps.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right text-xs text-muted-foreground">
-                          <div>Env enabled: {mcpRuntime.envEnabled ? 'Yes' : 'No'}</div>
-                          <div>
-                            Env config:
-                            {mcpRuntime.configPath
-                              ? ` ${mcpRuntime.configPath}`
-                              : mcpRuntime.hasConfigJson || mcpRuntime.hasServerUrl
-                                ? ' inline'
-                                : ' none'}
-                          </div>
-                        </div>
-                        <Switch
-                          checked={!!settings.mcp.enabled}
-                          onCheckedChange={(checked) =>
-                            setSettings((prev) => ({
-                              ...prev,
-                              mcp: {
-                                ...prev.mcp,
-                                enabled: checked,
-                              },
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" onClick={addMcpServer}>
-                        Add Server
-                      </Button>
-                      <Button type="button" onClick={saveMcpSettings} disabled={savingMcp}>
-                        {savingMcp ? 'Saving…' : 'Save MCP Settings'}
-                      </Button>
-                    </div>
-
-                    {settings.mcp.servers.length === 0 && (
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        No MCP servers configured yet.
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      {settings.mcp.servers.map((server) => (
-                        <div key={server.id} className="rounded-xl border p-4 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="font-medium">{server.name || server.id}</div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => removeMcpServer(server.id)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div>
-                              <Label>ID</Label>
-                              <Input
-                                value={server.id}
-                                onChange={(e) => updateMcpServer(server.id, { id: e.target.value })}
-                              />
-                            </div>
-                            <div>
-                              <Label>Name</Label>
-                              <Input
-                                value={server.name}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, { name: e.target.value })
-                                }
-                              />
-                            </div>
-                            <div>
-                              <Label>Transport</Label>
-                              <select
-                                className="w-full border rounded-md px-3 py-2 bg-background"
-                                value={server.transport}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    transport: e.target.value as 'stdio' | 'streamable-http',
-                                  })
-                                }
-                              >
-                                <option value="stdio">stdio</option>
-                                <option value="streamable-http">streamable-http</option>
-                              </select>
-                            </div>
-                            <div>
-                              <Label>Timeout (ms)</Label>
-                              <Input
-                                type="number"
-                                value={server.timeoutMs}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    timeoutMs: Number(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          {server.transport === 'stdio' ? (
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                              <div>
-                                <Label>Command</Label>
-                                <Input
-                                  value={server.command}
-                                  onChange={(e) =>
-                                    updateMcpServer(server.id, {
-                                      command: e.target.value,
-                                    })
-                                  }
-                                />
-                              </div>
-                              <div>
-                                <Label>Args (space-separated)</Label>
-                                <Input
-                                  value={server.args.join(' ')}
-                                  onChange={(e) =>
-                                    updateMcpServer(server.id, {
-                                      args: e.target.value
-                                        .split(' ')
-                                        .map((item) => item.trim())
-                                        .filter(Boolean),
-                                    })
-                                  }
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <Label>URL</Label>
-                              <Input
-                                value={server.url}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, { url: e.target.value })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div>
-                              <Label>Headers</Label>
-                              <textarea
-                                className="w-full min-h-[120px] border rounded-md px-3 py-2 bg-background font-mono text-xs"
-                                value={toKeyValueText(server.headers)}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    headers: fromKeyValueText(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                            <div>
-                              <Label>Environment</Label>
-                              <textarea
-                                className="w-full min-h-[120px] border rounded-md px-3 py-2 bg-background font-mono text-xs"
-                                value={toKeyValueText(server.env)}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    env: fromKeyValueText(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-6">
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={server.enabled}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    enabled: e.target.checked,
-                                  })
-                                }
-                              />
-                              Enabled
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={server.autoDiscover}
-                                onChange={(e) =>
-                                  updateMcpServer(server.id, {
-                                    autoDiscover: e.target.checked,
-                                  })
-                                }
-                              />
-                              Auto-discover tools
-                            </label>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                </motion.div>
-              </div>
-      </>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </div>
     </AuthenticatedLayout>
   );
 }

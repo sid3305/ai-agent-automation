@@ -119,7 +119,10 @@ function ExecutionHistoryRow({ taskId }: { taskId: string }) {
         </div>
       </td>
       <td className="py-3 px-4">
-        <div className="text-sm font-mono text-muted-foreground">
+        <div
+          className="text-sm font-mono text-muted-foreground truncate max-w-[120px]"
+          title={`exe_${task._id}`}
+        >
           exe_{task._id.substring(0, 8)}...{task._id.substring(task._id.length - 3)}
         </div>
       </td>
@@ -156,7 +159,12 @@ export function ExecutionHistoryTable({ taskIds }: ExecutionHistoryTableProps) {
               className="h-8 pl-8 w-[200px] bg-background/50 text-xs focus-visible:ring-1"
             />
           </div>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 bg-background/50"
+            aria-label="Filter"
+          >
             <Filter className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>

@@ -394,12 +394,17 @@ export default function TaskDetailPage() {
   const executedSteps = task.stepResults?.length ?? 0;
   const stepResults = task.stepResults ?? [];
   return (
-    <AuthenticatedLayout>
-      <div className="flex flex-col min-h-[calc(100vh-6rem)]">
+    <AuthenticatedLayout layout="panel">
+      <div className="flex flex-col flex-1 min-h-0 p-6 overflow-y-auto">
         <div className="flex items-center justify-between mb-6 shrink-0">
           <div className="flex items-center gap-3">
             <Link href={`/workflows/${task.workflowId}`}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                aria-label="Go back"
+              >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
@@ -505,7 +510,7 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-4 mb-6 shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6 shrink-0">
           <MetricCard
             title="Status"
             value={task.status.charAt(0).toUpperCase() + task.status.slice(1).replace('_', ' ')}
@@ -706,8 +711,8 @@ export default function TaskDetailPage() {
                 )}
 
                 {/* Step Details & Logs (Side by side below) */}
-                <div className="flex flex-row gap-6 w-full flex-1 min-h-[400px]">
-                  <div className="flex-1 min-w-[350px] flex flex-col">
+                <div className="flex flex-col lg:flex-row gap-6 w-full flex-1 min-h-[400px]">
+                  <div className="flex-1 min-w-0 lg:min-w-[350px] flex flex-col">
                     <StepDetailsPane
                       step={
                         task.metadata?.steps?.find(
@@ -719,7 +724,7 @@ export default function TaskDetailPage() {
                       taskId={task._id}
                     />
                   </div>
-                  <div className="flex-1 min-w-[350px] flex flex-col">
+                  <div className="flex-1 min-w-0 lg:min-w-[350px] flex flex-col">
                     <StepLogsPane taskId={task._id} />
                   </div>
                 </div>
@@ -730,7 +735,7 @@ export default function TaskDetailPage() {
               value="steps"
               className="flex-1 min-h-0 m-0 p-4 overflow-y-auto data-[state=inactive]:hidden"
             >
-              <div className="rounded-md border border-border">
+              <div className="rounded-md border border-border overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-muted/20 border-b border-border/50 text-muted-foreground text-xs uppercase tracking-wider">
                     <tr>

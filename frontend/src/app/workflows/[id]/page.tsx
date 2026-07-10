@@ -122,28 +122,7 @@ function getStepColor(status: string) {
 }
 
 function getTypeColor(type: string) {
-  switch ((type || '').toLowerCase()) {
-    case 'llm':
-      return 'bg-primary/20 text-primary border-primary/30';
-    case 'http':
-      return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-    case 'delay':
-      return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-    case 'document_query':
-    case 'document':
-      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-    case 'mcp':
-      return 'bg-teal-500/20 text-teal-400 border-teal-500/30';
-    case 'condition':
-    case 'switch':
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-    case 'parallel':
-    case 'join':
-      return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
-    default:
-      // All dynamically discovered tool nodes (email, file, browser, github, slack, test_tool, etc.)
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
-  }
+  return 'bg-muted text-muted-foreground border-border';
 }
 
 /**
@@ -361,7 +340,6 @@ export default function WorkflowDetailPage() {
       name: workflow.name,
       description: workflow.description || '',
       category: 'Custom',
-      icon: '⚙️',
       tags: ['workflow'],
       steps:
         workflow.metadata?.steps?.map((step) => {

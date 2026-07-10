@@ -280,8 +280,7 @@ export function ExecutionTimeline({
                                 : 'bg-muted-foreground/20'
                         )}
                       >
-                        {/* Optional subtle inner gradient for volume */}
-                        <div className="w-full h-full rounded-full bg-gradient-to-b from-white/20 to-transparent"></div>
+                        {/* Decorative inner gradient removed */}
                       </div>
                     </div>
                   )}
