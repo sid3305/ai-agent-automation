@@ -26,14 +26,22 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
     headers['x-source-task-id'] = String(context.taskId);
   }
 
-  const response = await axios({
-    method: (config.method || 'GET').toLowerCase(),
+  const method = (config.method || 'GET').toLowerCase();
+  const hasBody = !['get', 'head'].includes(method);
+
+  const requestConfig = {
+    method,
     url: interpolate(config.url || '', context),
-    data: parsedBody,
     headers: { ...(config.headers || {}), ...headers },
     timeout: config.timeout || step.timeout || 30000,
     validateStatus: () => true,
-  });
+  };
+
+  if (hasBody && parsedBody !== null) {
+    requestConfig.data = parsedBody;
+  }
+
+  const response = await axios(requestConfig);
 
   return createStepResult({
     stepId: validatedStepId,
