@@ -20,7 +20,12 @@ async function execute(step, context, agent, validatedStepId, timeoutMs) {
       temperature: 0,
     });
 
-    evaluation = aiResult.text.toLowerCase().includes('true');
+    const text = (aiResult.text || '').toLowerCase().trim();
+    const hasTrue = /\btrue\b/i.test(text);
+    const hasFalse = /\bfalse\b/i.test(text);
+    const hasNot = /\b(not|never|no)\b/i.test(text);
+
+    evaluation = hasTrue && !hasFalse && !hasNot;
   }
 
   return createStepResult({
