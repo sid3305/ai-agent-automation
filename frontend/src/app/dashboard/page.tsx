@@ -86,11 +86,13 @@ function DashboardPageInner() {
   const { data: stats, loading: statsLoading } = useApi<DashboardStats>('/dashboard/stats');
   const { data: tasks, loading: tasksLoading } = useApi<Task[]>('/tasks');
   const { data: workflowsResponse, loading: workflowsLoading } = useApi<any>('/workflows');
+  const userTimezone = typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+
   const {
     data: trendData,
     loading: trendLoading,
     refetch: refetchTrend,
-  } = useApi<ExecutionTrendResponse>('/dashboard/execution-trend');
+  } = useApi<ExecutionTrendResponse>(`/dashboard/execution-trend?tz=${encodeURIComponent(userTimezone)}`);
 
   // Auto-refresh execution trend every 30 seconds
   useEffect(() => {
