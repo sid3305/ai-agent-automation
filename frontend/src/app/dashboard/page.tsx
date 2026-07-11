@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { AnalyticsSection } from '@/components/dashboard/analytics-section';
 import { KPIBar } from '@/components/dashboard/kpi-bar';
 import { TokenUsageCard } from '@/components/dashboard/token-usage-card';
+import type { ExecutionTrendResponse } from '@/types/dashboard';
 import { WorkflowsStatusCard } from '@/components/dashboard/workflows-status-card';
 
 /* -----------------------------
@@ -85,6 +86,21 @@ function DashboardPageInner() {
   const { data: stats, loading: statsLoading } = useApi<DashboardStats>('/dashboard/stats');
   const { data: tasks, loading: tasksLoading } = useApi<Task[]>('/tasks');
   const { data: workflowsResponse, loading: workflowsLoading } = useApi<any>('/workflows');
+  const userTimezone = typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+
+  const {
+    data: trendData,
+    loading: trendLoading,
+    refetch: refetchTrend,
+  } = useApi<ExecutionTrendResponse>(`/dashboard/execution-trend?tz=${encodeURIComponent(userTimezone)}`);
+
+  // Auto-refresh execution trend every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchTrend();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [refetchTrend]);
 
   // Safely extract arrays from backend payload
   const workflowsArray = Array.isArray(workflowsResponse)
@@ -217,7 +233,11 @@ function DashboardPageInner() {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-5">
           {/* Left Column Stack */}
           <div className="xl:col-span-8 flex flex-col gap-4 md:gap-5">
-            <AnalyticsSection stats={stats} loading={statsLoading} />
+            <AnalyticsSection
+              trend={trendData?.trend ?? []}
+              summary={trendData?.summary ?? null}
+              loading={trendLoading}
+            />
             <TokenUsageCard />
           </div>
 
