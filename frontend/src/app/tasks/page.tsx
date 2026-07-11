@@ -97,6 +97,10 @@ export default function TasksPage() {
   const { addToast } = useToast();
   const { setContext, clearContext } = useAssistantContext();
 
+  useEffect(() => {
+    setWorkflowFilter(searchParams.get("workflow") ?? "");
+  }, [searchParams]);
+
   async function deleteTask(taskId: string) {
     const confirmed = confirm('Delete this task permanently?');
     if (!confirmed) return;
