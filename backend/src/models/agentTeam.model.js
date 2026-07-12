@@ -23,6 +23,8 @@ const AgentTeamSchema = new mongoose.Schema({
     enum: ['mesh', 'hierarchical', 'linear'], 
     default: 'mesh' 
   },
+  nodes: { type: Array, default: [] },
+  edges: { type: Array, default: [] },
   isActive: { type: Boolean, default: true },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true, minimize: false });

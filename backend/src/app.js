@@ -42,7 +42,7 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({ name: 'A2A testing' });
+    const workflow = await db.collection('workflows').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
 
     if (!workflow) {
       return res.status(404).json({ error: "Workflow 'A2A testing' not found in database." });
@@ -54,7 +54,7 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
         'Content-Type': 'application/json',
         'Authorization': req.headers.authorization || ''
       },
-      body: JSON.stringify({ triggerSource: 'war_room', input })
+      body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
     });
 
     if (!execRes.ok) {

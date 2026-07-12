@@ -6,7 +6,7 @@ const Agent = require('../models/agent.model');
 
 async function createTeam(req, res) {
   try {
-    const { name, description, agents, externalAgents, topology } = req.body;
+    const { name, description, agents, externalAgents, topology, nodes, edges } = req.body;
 
     if (!name) return res.status(400).json({ ok: false, error: 'name_required' });
 
@@ -19,6 +19,8 @@ async function createTeam(req, res) {
       agents: agents || [],
       externalAgents: externalAgents || [],
       topology: topology || 'mesh',
+      nodes: nodes || [],
+      edges: edges || [],
       metadata: { a2aSecret },
     });
 
