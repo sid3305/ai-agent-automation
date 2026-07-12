@@ -35,6 +35,61 @@ app.use(helmetMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// <---------------------Temporary--------------------------->
+const mongoose = require('mongoose');
+
+app.post('/api/agent-teams/:id/run', async (req, res) => {
+  try {
+    const { input } = req.body;
+    const db = mongoose.connection.db;
+    const workflow = await db.collection('workflows').findOne({ name: 'A2A testing' });
+
+    if (!workflow) {
+      return res.status(404).json({ error: "Workflow 'A2A testing' not found in database." });
+    }
+    const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
+    const execRes = await fetch(execUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': req.headers.authorization || ''
+      },
+      body: JSON.stringify({ triggerSource: 'war_room', input })
+    });
+
+    if (!execRes.ok) {
+      const errorBody = await execRes.text();
+      throw new Error(`Runner failed with Status ${execRes.status}: ${errorBody}`);
+    }
+    res.json({
+      ok: true,
+      messages: [
+        {
+          id: Date.now().toString(),
+          role: 'agent',
+          agentName: 'Support Bot',
+          content: `Received your prompt: "${input}". Coordinating with Tech Bot now.`
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'agent',
+          agentName: 'Tech Bot',
+          content: 'System failure confirmed. Workflow triggered successfully.',
+          workflowExecution: {
+            workflowId: workflow._id.toString(),
+            workflowName: 'A2A testing',
+            status: 'success'
+          }
+        }
+      ]
+    });
+  } catch (error) {
+    console.error("❌ SWARM EXECUTION ERROR:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+// <---------------------Temporary--------------------------->
+
 // apply rate limiting middleware to routes
 app.use('/api', globalLimiter);
 app.use('/webhook', webhookLimiter);

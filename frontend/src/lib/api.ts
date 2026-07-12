@@ -144,3 +144,19 @@ export function runWorkflow(id: string): Promise<WorkflowApiResponse> {
 export function getAgents(): Promise<{ ok: boolean; agents: any[] }> {
   return apiGet<{ ok: boolean; agents: any[] }>(`/agents`);
 }
+
+export function getAgentTeam(id: string) {
+  return apiGet<{ ok: boolean; team: any }>(`/agent-teams/${id}`);
+}
+
+export function updateAgentTeam(id: string, payload: any) {
+  return apiPut<{ ok: boolean; team: any }>(`/agent-teams/${id}`, payload);
+}
+
+export function createAgentTeam(payload: { nodes: any[]; edges: any[] }) {
+  return apiPost<{ ok: boolean; team: any }>(`/agent-teams`, payload);
+}
+
+export function runAgentTeam(id: string, input: string) {
+  return apiPost<{ ok: boolean; messages: any[] }>(`/agent-teams/${id}/run`, { input });
+}
