@@ -141,12 +141,40 @@ async function markStaleProcessingDocumentsAsFailed() {
   );
 }
 
-async function queryDocument(agent, userId, documentId, query, topK = 3) {
-  return queryDocuments(agent, userId, [documentId], query, topK);
+async function queryDocument(
+  agent,
+  userId,
+  documentId,
+  query,
+  topK = 3,
+  strategy = 'auto'
+) {
+  return queryDocuments(
+    agent,
+    userId,
+    [documentId],
+    query,
+    topK,
+    strategy
+  );
 }
 
-async function queryDocuments(agent, userId, documentIds, query, topK = 3) {
-  return retrievalManager.retrieve(agent, userId, documentIds, query, topK);
+async function queryDocuments(
+  agent,
+  userId,
+  documentIds,
+  query,
+  topK = 3,
+  strategy = 'auto'
+) {
+  return retrievalManager.retrieve(
+    agent,
+    userId,
+    documentIds,
+    query,
+    topK,
+    strategy
+  );
 }
 
 module.exports = {

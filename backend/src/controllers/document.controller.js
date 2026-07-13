@@ -166,7 +166,12 @@ async function listDocuments(req, res) {
 
 async function chatWithDocument(req, res) {
   try {
-    const { documentId, documentIds, question } = req.body;
+    const {
+      documentId,
+      documentIds,
+      question,
+      strategy = 'auto',
+    } = req.body;
 
     if (typeof question !== 'string' || !question.trim()) {
       return res.status(400).json({
@@ -266,7 +271,8 @@ async function chatWithDocument(req, res) {
       req.user._id,
       selectedDocumentIds,
       trimmedQuestion,
-      topK
+      topK,
+      strategy
     );
 
     if (!chunks.length) {
@@ -440,6 +446,17 @@ ${trimmedQuestion}
     });
   } catch (err) {
     console.error('Document query error:', err);
+
+    if (
+      err.message &&
+      err.message.includes('Retrieval strategy')
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: 'invalid_retrieval_strategy',
+        message: err.message,
+      });
+    }
 
     res.status(500).json({
       ok: false,
