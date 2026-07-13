@@ -16,17 +16,30 @@ process.on("message", async (msg) => {
 
     // Safe string interpolation utility matrix mapping logic
     const { interpolate } = require("../agents/utils/interpolate");
+
+    // Important: do not depend on args[1] when ctx is provided by the tool contract.
+    // Fallback to args[1] only when ctx is null/undefined.
     const safeInterpolate = (val, ctx) => {
-      const context = args[1] || {};
-      return interpolate(val, ctx || context);
+      return interpolate(val, ctx ?? args[1] ?? {});
     };
 
     let result;
     if (functionName === "run") {
-      // Destructure position parameters from standard verification tuples
+      if (!Array.isArray(args)) {
+        throw new Error(`Execution Contract Violation: expected args to be an array for tool "${toolName}" function "run".`);
+      }
+
+      // Standard contract: [step, context]
+      if (args.length < 2) {
+        throw new Error(
+          `Execution Contract Violation: expected args for tool "${toolName}" function "run" to be [step, context]; received ${JSON.stringify(args)}.`
+        );
+      }
+
       const [step, context] = args;
       result = await tool.run(step, context, safeInterpolate);
     } else {
+
       // Fallback architecture matching older test files configuration triggers
       const fn = tool[functionName];
       if (typeof fn !== "function") {
